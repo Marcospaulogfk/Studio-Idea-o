@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useFormState, useFormStatus } from 'react-dom'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
-import Image from 'next/image'
+import { Logo } from '@/components/logo'
 import { login } from './actions'
 
 function SubmitButton() {
@@ -32,14 +32,7 @@ export default function LoginPage() {
 
       <div className="w-full max-w-md relative">
         <div className="text-center mb-8">
-          <Image
-            src="/img/logo-studio-white.svg"
-            alt="Studio Ideação"
-            width={260}
-            height={52}
-            priority
-            className="mx-auto mb-3 h-12 w-auto"
-          />
+          <Logo bg="dark" height={48} priority className="mx-auto mb-3" />
           <p className="text-orange-200/80 text-xs tracking-widest uppercase">CRM · ERP · Business Intelligence</p>
         </div>
 

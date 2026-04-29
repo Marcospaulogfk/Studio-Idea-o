@@ -1,12 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
+import { Logo } from '@/components/logo'
 import {
   LayoutDashboard, Users, UserPlus, ShoppingBag, Package,
   Clapperboard, DollarSign, Star, Bell, LogOut, Sun, Moon,
@@ -77,14 +77,7 @@ export function Sidebar({ notifications = 0 }: { notifications?: number }) {
     <aside className="fixed left-0 top-0 h-screen w-64 bg-sidebar flex flex-col z-40 shadow-xl">
       {/* Logo */}
       <div className="px-5 py-6 border-b border-white/5">
-        <Image
-          src="/img/logo-studio-white.svg"
-          alt="Studio Ideação"
-          width={200}
-          height={40}
-          priority
-          className="h-9 w-auto"
-        />
+        <Logo bg="dark" height={36} priority />
         <p className="text-slate-500 text-[10px] uppercase tracking-[0.2em] mt-2.5">CRM · ERP · BI</p>
       </div>
 

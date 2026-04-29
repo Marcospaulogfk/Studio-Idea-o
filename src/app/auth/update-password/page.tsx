@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Eye, EyeOff, Loader2, CheckCircle } from 'lucide-react'
-import Image from 'next/image'
+import { Logo } from '@/components/logo'
 
 function AuthShell({ children }: { children: React.ReactNode }) {
   return (
@@ -70,7 +70,7 @@ export default function UpdatePasswordPage() {
     <AuthShell>
       <div className="w-full max-w-md relative">
         <div className="text-center mb-8">
-          <Image src="/img/logo-studio-white.svg" alt="Studio Ideação" width={260} height={52} priority className="mx-auto mb-3 h-12 w-auto"/>
+          <Logo bg="dark" height={48} priority className="mx-auto mb-3" />
           <p className="text-orange-200/80 text-xs tracking-widest uppercase">Defina sua senha de acesso</p>
         </div>
 
