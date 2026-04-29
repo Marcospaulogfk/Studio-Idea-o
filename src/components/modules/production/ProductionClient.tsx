@@ -1,19 +1,27 @@
 'use client'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   DndContext,
   DragEndEvent,
+  DragOverEvent,
   DragOverlay,
   DragStartEvent,
   PointerSensor,
-  useDraggable,
+  closestCorners,
   useDroppable,
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { createClient } from '@/lib/supabase/client'
 import { Production, ProductionStatus, PRODUCTION_STATUS_LABELS } from '@/types'
-import { Badge, Card, PageHeader, KpiCard } from '@/components/ui'
+import { PageHeader, KpiCard } from '@/components/ui'
 import { formatDate, daysRemaining, cn } from '@/lib/utils'
 import { Clapperboard, Clock, CheckCircle, MoveRight, GripVertical } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -35,26 +43,14 @@ const COL_RING: Record<ProductionStatus, string> = {
   done: 'ring-green-500',
 }
 
-function ProductionCardBody({ prod, dragHandleProps }: { prod: Production; dragHandleProps?: any }) {
+function ProductionCardBody({ prod }: { prod: Production }) {
   const client = (prod as any).client
   const pkg = (prod as any).package
   const daysLeft = pkg?.expires_at ? daysRemaining(pkg.expires_at) : null
   return (
     <>
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-gray-900 text-sm">{client?.name ?? '—'}</p>
-          {prod.title && <p className="text-xs text-gray-500 mt-0.5">{prod.title}</p>}
-        </div>
-        <button
-          {...dragHandleProps}
-          aria-label="Arrastar"
-          className="text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing touch-none"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <GripVertical size={16} />
-        </button>
-      </div>
+      <p className="font-semibold text-gray-900 text-sm">{client?.name ?? '—'}</p>
+      {prod.title && <p className="text-xs text-gray-500 mt-0.5">{prod.title}</p>}
       {daysLeft !== null && (
         <div className={cn('text-xs mt-2 flex items-center gap-1 font-medium',
           daysLeft <= 7 ? 'text-red-600' : daysLeft <= 15 ? 'text-yellow-600' : 'text-gray-500')}>
@@ -67,7 +63,7 @@ function ProductionCardBody({ prod, dragHandleProps }: { prod: Production; dragH
   )
 }
 
-function DraggableProductionCard({
+function SortableProductionCard({
   prod,
   col,
   onMove,
@@ -76,22 +72,38 @@ function DraggableProductionCard({
   col: ProductionStatus
   onMove: (p: Production, status: ProductionStatus) => void
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: prod.id,
-    data: { status: prod.status },
+    data: { type: 'card', status: prod.status },
   })
-  const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.3 : 1,
+  }
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={cn(
-        'bg-white rounded-xl p-3 shadow-sm border-t-4 transition-shadow',
+        'bg-white rounded-xl p-3 shadow-sm border-t-4',
         COL_COLORS[col],
-        isDragging && 'opacity-40 ring-2 ring-brand-400',
       )}
     >
-      <ProductionCardBody prod={prod} dragHandleProps={{ ...listeners, ...attributes }} />
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <ProductionCardBody prod={prod} />
+        </div>
+        <button
+          {...attributes}
+          {...listeners}
+          aria-label="Arrastar"
+          className="text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing touch-none"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <GripVertical size={16} />
+        </button>
+      </div>
       <div className="flex gap-2 mt-3">
         {col === 'queue' && (
           <button onClick={() => onMove(prod, 'in_progress')}
@@ -123,12 +135,14 @@ function DroppableColumn({
   status,
   children,
   isOver,
+  count,
 }: {
   status: ProductionStatus
   children: React.ReactNode
   isOver: boolean
+  count: number
 }) {
-  const { setNodeRef } = useDroppable({ id: status })
+  const { setNodeRef } = useDroppable({ id: status, data: { type: 'column' } })
   return (
     <div
       ref={setNodeRef}
@@ -138,7 +152,13 @@ function DroppableColumn({
         isOver && cn('ring-2', COL_RING[status]),
       )}
     >
-      {children}
+      <div className="flex items-center gap-2 mb-4">
+        <h3 className="font-semibold text-gray-700 text-sm">{PRODUCTION_STATUS_LABELS[status]}</h3>
+        <span className="bg-white text-gray-500 text-xs font-bold px-2 py-0.5 rounded-full shadow-sm">
+          {count}
+        </span>
+      </div>
+      <div className="space-y-3">{children}</div>
     </div>
   )
 }
@@ -147,16 +167,44 @@ export default function ProductionClient({ initialProductions }: { initialProduc
   const supabase = createClient()
   const [productions, setProductions] = useState<Production[]>(initialProductions)
   const [activeId, setActiveId] = useState<string | null>(null)
-  const [overColumn, setOverColumn] = useState<ProductionStatus | null>(null)
+  const [overId, setOverId] = useState<string | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   )
 
-  const byStatus = COLUMNS.reduce((acc, col) => {
-    acc[col] = productions.filter(p => p.status === col)
-    return acc
-  }, {} as Record<ProductionStatus, Production[]>)
+  const byStatus = useMemo(() => {
+    return COLUMNS.reduce((acc, col) => {
+      acc[col] = productions
+        .filter(p => p.status === col)
+        .sort((a, b) => (a.queue_position ?? 0) - (b.queue_position ?? 0))
+      return acc
+    }, {} as Record<ProductionStatus, Production[]>)
+  }, [productions])
+
+  const findColumn = (id: string): ProductionStatus | null => {
+    if ((COLUMNS as string[]).includes(id)) return id as ProductionStatus
+    return productions.find(p => p.id === id)?.status ?? null
+  }
+
+  const overColumn = overId ? findColumn(overId) : null
+
+  async function persistAll(snapshot: Production[]) {
+    const updates = snapshot.map(p => {
+      const update: any = {
+        status: p.status,
+        queue_position: p.queue_position ?? 0,
+      }
+      if (p.status === 'in_progress' && !p.started_at) update.started_at = new Date().toISOString()
+      if (p.status === 'done' && !p.finished_at) update.finished_at = new Date().toISOString()
+      return { id: p.id, update }
+    })
+
+    const results = await Promise.all(
+      updates.map(({ id, update }) => supabase.from('productions').update(update).eq('id', id))
+    )
+    if (results.some(r => r.error)) toast.error('Erro ao salvar posições')
+  }
 
   async function moveCard(prod: Production, newStatus: ProductionStatus) {
     if (prod.status === newStatus) return
@@ -164,12 +212,13 @@ export default function ProductionClient({ initialProductions }: { initialProduc
     if (newStatus === 'in_progress' && !prod.started_at) updates.started_at = new Date().toISOString()
     if (newStatus === 'done') updates.finished_at = new Date().toISOString()
 
-    setProductions(prev => prev.map(p => p.id === prod.id ? { ...p, ...updates } : p))
+    const next = productions.map(p => p.id === prod.id ? { ...p, ...updates } : p)
+    setProductions(next)
 
     const { error } = await supabase.from('productions').update(updates).eq('id', prod.id)
     if (error) {
       toast.error('Erro ao mover card')
-      setProductions(prev => prev.map(p => p.id === prod.id ? prod : p))
+      setProductions(productions)
       return
     }
     if (newStatus === 'done') toast.success('Arte finalizada! Pós-venda criado automaticamente.')
@@ -180,15 +229,66 @@ export default function ProductionClient({ initialProductions }: { initialProduc
     setActiveId(String(event.active.id))
   }
 
-  function handleDragEnd(event: DragEndEvent) {
-    setActiveId(null)
-    setOverColumn(null)
+  function handleDragOver(event: DragOverEvent) {
     const { active, over } = event
+    setOverId(over ? String(over.id) : null)
     if (!over) return
-    const newStatus = over.id as ProductionStatus
-    const prod = productions.find(p => p.id === active.id)
-    if (!prod) return
-    moveCard(prod, newStatus)
+
+    const activeIdStr = String(active.id)
+    const overIdStr = String(over.id)
+    if (activeIdStr === overIdStr) return
+
+    const activeCol = findColumn(activeIdStr)
+    const overCol = findColumn(overIdStr)
+    if (!activeCol || !overCol || activeCol === overCol) return
+
+    setProductions(prev => prev.map(p => p.id === activeIdStr ? { ...p, status: overCol } : p))
+  }
+
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    setActiveId(null)
+    setOverId(null)
+    if (!over) return
+
+    const activeIdStr = String(active.id)
+    const overIdStr = String(over.id)
+    const finalCol = findColumn(activeIdStr)
+    if (!finalCol) return
+
+    let snapshot = productions
+
+    if (activeIdStr !== overIdStr && !(COLUMNS as string[]).includes(overIdStr)) {
+      const colCards = snapshot
+        .filter(p => p.status === finalCol)
+        .sort((a, b) => (a.queue_position ?? 0) - (b.queue_position ?? 0))
+      const oldIdx = colCards.findIndex(c => c.id === activeIdStr)
+      const newIdx = colCards.findIndex(c => c.id === overIdStr)
+      if (oldIdx !== -1 && newIdx !== -1 && oldIdx !== newIdx) {
+        const moved = arrayMove(colCards, oldIdx, newIdx)
+        const posMap = new Map(moved.map((c, idx) => [c.id, idx]))
+        snapshot = snapshot.map(p =>
+          posMap.has(p.id) ? { ...p, queue_position: posMap.get(p.id)! } : p,
+        )
+      }
+    }
+
+    // Renumera todas as colunas pra garantir consistência
+    const renumbered = snapshot.map(p => ({ ...p }))
+    COLUMNS.forEach(col => {
+      const list = renumbered
+        .filter(p => p.status === col)
+        .sort((a, b) => (a.queue_position ?? 0) - (b.queue_position ?? 0))
+      list.forEach((c, idx) => { c.queue_position = idx })
+    })
+
+    setProductions(renumbered)
+    await persistAll(renumbered)
+  }
+
+  function handleDragCancel() {
+    setActiveId(null)
+    setOverId(null)
   }
 
   const activeProd = activeId ? productions.find(p => p.id === activeId) : null
@@ -208,30 +308,33 @@ export default function ProductionClient({ initialProductions }: { initialProduc
 
       <DndContext
         sensors={sensors}
+        collisionDetection={closestCorners}
         onDragStart={handleDragStart}
-        onDragOver={(e) => setOverColumn(e.over ? (e.over.id as ProductionStatus) : null)}
+        onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
-        onDragCancel={() => { setActiveId(null); setOverColumn(null) }}
+        onDragCancel={handleDragCancel}
       >
         <div className="grid grid-cols-3 gap-4">
           {COLUMNS.map(col => (
-            <DroppableColumn key={col} status={col} isOver={overColumn === col}>
-              <div className="flex items-center gap-2 mb-4">
-                <h3 className="font-semibold text-gray-700 text-sm">{PRODUCTION_STATUS_LABELS[col]}</h3>
-                <span className="bg-white text-gray-500 text-xs font-bold px-2 py-0.5 rounded-full shadow-sm">
-                  {byStatus[col].length}
-                </span>
-              </div>
-              <div className="space-y-3">
-                {byStatus[col].map(prod => (
-                  <DraggableProductionCard key={prod.id} prod={prod} col={col} onMove={moveCard} />
-                ))}
+            <DroppableColumn
+              key={col}
+              status={col}
+              isOver={overColumn === col}
+              count={byStatus[col].length}
+            >
+              <SortableContext
+                items={byStatus[col].map(p => p.id)}
+                strategy={verticalListSortingStrategy}
+              >
                 {byStatus[col].length === 0 && (
                   <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center">
                     <p className="text-xs text-gray-400">Solte um card aqui</p>
                   </div>
                 )}
-              </div>
+                {byStatus[col].map(prod => (
+                  <SortableProductionCard key={prod.id} prod={prod} col={col} onMove={moveCard} />
+                ))}
+              </SortableContext>
             </DroppableColumn>
           ))}
         </div>

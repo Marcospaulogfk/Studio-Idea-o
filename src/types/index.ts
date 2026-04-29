@@ -47,6 +47,7 @@ export interface Lead {
   estimated_value?: number
   origin?: LeadOrigin
   funnel_stage: LeadStage
+  position?: number
   notes?: string
   assigned_to?: string
   last_contact?: string

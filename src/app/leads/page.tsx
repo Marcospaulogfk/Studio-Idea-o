@@ -7,6 +7,7 @@ export default async function LeadsPage() {
   const { data: leads } = await supabase
     .from('leads')
     .select('*, followups(*)')
+    .order('position', { ascending: true })
     .order('created_at', { ascending: false })
 
   return <LeadsClient initialLeads={leads ?? []} />

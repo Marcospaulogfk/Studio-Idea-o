@@ -1,22 +1,30 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   DndContext,
   DragEndEvent,
+  DragOverEvent,
   DragOverlay,
   DragStartEvent,
   PointerSensor,
-  useDraggable,
+  closestCorners,
   useDroppable,
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { createClient } from '@/lib/supabase/client'
 import { Lead, LeadStage, LEAD_STAGE_LABELS, ORIGIN_LABELS, LeadOrigin, SERVICES } from '@/types'
 import { Button, Badge, Input, Select, Textarea, PageHeader } from '@/components/ui'
 import { formatCurrency, formatRelative, getFollowupUrgency, cn } from '@/lib/utils'
-import { Plus, Phone, Clock, ChevronRight, X, CheckCircle } from 'lucide-react'
+import { Plus, Phone, Clock, ChevronRight, X, CheckCircle, GripVertical } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const STAGES: LeadStage[] = ['new', 'negotiating', 'closed', 'disqualified', 'future']
@@ -78,26 +86,40 @@ function LeadCardBody({ lead }: { lead: Lead }) {
   )
 }
 
-function DraggableLeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+function SortableLeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: lead.id,
-    data: { stage: lead.funnel_stage },
+    data: { type: 'card', stage: lead.funnel_stage },
   })
-  const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.3 : 1,
+  }
   return (
     <div
       ref={setNodeRef}
       style={style}
       onClick={onClick}
-      {...listeners}
-      {...attributes}
       className={cn(
-        'bg-white border-l-4 rounded-xl p-3 shadow-sm cursor-grab active:cursor-grabbing hover:shadow-md transition-all touch-none',
+        'bg-white border-l-4 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer',
         STAGE_COLORS[lead.funnel_stage],
-        isDragging && 'opacity-40 ring-2 ring-brand-400',
       )}
     >
-      <LeadCardBody lead={lead} />
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <LeadCardBody lead={lead} />
+        </div>
+        <button
+          {...attributes}
+          {...listeners}
+          aria-label="Arrastar"
+          className="text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing touch-none -mt-1"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <GripVertical size={16} />
+        </button>
+      </div>
     </div>
   )
 }
@@ -113,7 +135,7 @@ function DroppableStageColumn({
   count: number
   children: React.ReactNode
 }) {
-  const { setNodeRef } = useDroppable({ id: stage })
+  const { setNodeRef } = useDroppable({ id: stage, data: { type: 'column' } })
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -142,26 +164,32 @@ export default function LeadsClient({ initialLeads }: Props) {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
   const [filterStage, setFilterStage] = useState<LeadStage | 'all'>('all')
   const [activeId, setActiveId] = useState<string | null>(null)
-  const [overStage, setOverStage] = useState<LeadStage | null>(null)
+  const [overId, setOverId] = useState<string | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   )
 
-  // Formulário
   const [form, setForm] = useState({
     name: '', phone: '', service: '', estimated_value: '',
     origin: '' as LeadOrigin | '', notes: ''
   })
 
-  const filteredLeads = filterStage === 'all'
-    ? leads
-    : leads.filter(l => l.funnel_stage === filterStage)
+  const byStage = useMemo(() => {
+    return STAGES.reduce((acc, stage) => {
+      acc[stage] = leads
+        .filter(l => l.funnel_stage === stage)
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+      return acc
+    }, {} as Record<LeadStage, Lead[]>)
+  }, [leads])
 
-  const leadsByStage = STAGES.reduce((acc, stage) => {
-    acc[stage] = filteredLeads.filter(l => l.funnel_stage === stage)
-    return acc
-  }, {} as Record<LeadStage, Lead[]>)
+  const findStage = (id: string): LeadStage | null => {
+    if ((STAGES as string[]).includes(id)) return id as LeadStage
+    return leads.find(l => l.id === id)?.funnel_stage ?? null
+  }
+
+  const overStage = overId ? findStage(overId) : null
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -173,10 +201,11 @@ export default function LeadsClient({ initialLeads }: Props) {
       origin: form.origin || null,
       notes: form.notes || null,
       funnel_stage: 'new',
+      position: 0,
     }).select().single()
 
     if (error) { toast.error('Erro ao criar lead'); return }
-    setLeads(prev => [data, ...prev])
+    setLeads(prev => [data, ...prev.map(l => l.funnel_stage === 'new' ? { ...l, position: (l.position ?? 0) + 1 } : l)])
     setForm({ name: '', phone: '', service: '', estimated_value: '', origin: '', notes: '' })
     setShowForm(false)
     toast.success('Lead criado com sucesso!')
@@ -184,7 +213,6 @@ export default function LeadsClient({ initialLeads }: Props) {
 
   async function handleStageChange(lead: Lead, newStage: LeadStage) {
     if (lead.funnel_stage === newStage) return
-
     setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, funnel_stage: newStage } : l))
     if (selectedLead?.id === lead.id) setSelectedLead({ ...lead, funnel_stage: newStage })
 
@@ -216,19 +244,86 @@ export default function LeadsClient({ initialLeads }: Props) {
     toast.success('Contato registrado!')
   }
 
+  async function persistAll(snapshot: Lead[]) {
+    const updates = snapshot.map(l => ({
+      id: l.id,
+      funnel_stage: l.funnel_stage,
+      position: l.position ?? 0,
+    }))
+    const results = await Promise.all(
+      updates.map(u =>
+        supabase.from('leads').update({
+          funnel_stage: u.funnel_stage,
+          position: u.position,
+        }).eq('id', u.id),
+      ),
+    )
+    if (results.some(r => r.error)) toast.error('Erro ao salvar posições')
+  }
+
   function handleDragStart(event: DragStartEvent) {
     setActiveId(String(event.active.id))
   }
 
-  function handleDragEnd(event: DragEndEvent) {
-    setActiveId(null)
-    setOverStage(null)
+  function handleDragOver(event: DragOverEvent) {
     const { active, over } = event
+    setOverId(over ? String(over.id) : null)
     if (!over) return
-    const newStage = over.id as LeadStage
-    const lead = leads.find(l => l.id === active.id)
-    if (!lead) return
-    handleStageChange(lead, newStage)
+
+    const activeIdStr = String(active.id)
+    const overIdStr = String(over.id)
+    if (activeIdStr === overIdStr) return
+
+    const activeStage = findStage(activeIdStr)
+    const overStage = findStage(overIdStr)
+    if (!activeStage || !overStage || activeStage === overStage) return
+
+    setLeads(prev => prev.map(l => l.id === activeIdStr ? { ...l, funnel_stage: overStage } : l))
+  }
+
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    setActiveId(null)
+    setOverId(null)
+    if (!over) return
+
+    const activeIdStr = String(active.id)
+    const overIdStr = String(over.id)
+    const finalStage = findStage(activeIdStr)
+    if (!finalStage) return
+
+    let snapshot = leads
+
+    if (activeIdStr !== overIdStr && !(STAGES as string[]).includes(overIdStr)) {
+      const stageList = snapshot
+        .filter(l => l.funnel_stage === finalStage)
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+      const oldIdx = stageList.findIndex(l => l.id === activeIdStr)
+      const newIdx = stageList.findIndex(l => l.id === overIdStr)
+      if (oldIdx !== -1 && newIdx !== -1 && oldIdx !== newIdx) {
+        const moved = arrayMove(stageList, oldIdx, newIdx)
+        const posMap = new Map(moved.map((l, idx) => [l.id, idx]))
+        snapshot = snapshot.map(l =>
+          posMap.has(l.id) ? { ...l, position: posMap.get(l.id)! } : l,
+        )
+      }
+    }
+
+    const renumbered = snapshot.map(l => ({ ...l }))
+    STAGES.forEach(stage => {
+      const list = renumbered
+        .filter(l => l.funnel_stage === stage)
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+      list.forEach((l, idx) => { l.position = idx })
+    })
+
+    setLeads(renumbered)
+    await persistAll(renumbered)
+  }
+
+  function handleDragCancel() {
+    setActiveId(null)
+    setOverId(null)
   }
 
   const activeLead = activeId ? leads.find(l => l.id === activeId) : null
@@ -245,7 +340,6 @@ export default function LeadsClient({ initialLeads }: Props) {
         }
       />
 
-      {/* Filtros por estágio */}
       <div className="flex gap-2 flex-wrap">
         {([['all', 'Todos'], ...STAGES.map(s => [s, LEAD_STAGE_LABELS[s]])] as [string, string][]).map(([stage, label]) => (
           <button
@@ -268,18 +362,18 @@ export default function LeadsClient({ initialLeads }: Props) {
         ))}
       </div>
 
-      {/* Kanban com DnD */}
       <DndContext
         sensors={sensors}
+        collisionDetection={closestCorners}
         onDragStart={handleDragStart}
-        onDragOver={(e) => setOverStage(e.over ? (e.over.id as LeadStage) : null)}
+        onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
-        onDragCancel={() => { setActiveId(null); setOverStage(null) }}
+        onDragCancel={handleDragCancel}
       >
         <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           {STAGES.map(stage => {
             if (filterStage !== 'all' && filterStage !== stage) return null
-            const stageLeads = leadsByStage[stage] ?? []
+            const stageLeads = byStage[stage] ?? []
             return (
               <DroppableStageColumn
                 key={stage}
@@ -287,18 +381,23 @@ export default function LeadsClient({ initialLeads }: Props) {
                 isOver={overStage === stage}
                 count={stageLeads.length}
               >
-                {stageLeads.length === 0 && (
-                  <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl p-4 text-center">
-                    <p className="text-xs text-gray-400">Solte um lead aqui</p>
-                  </div>
-                )}
-                {stageLeads.map(lead => (
-                  <DraggableLeadCard
-                    key={lead.id}
-                    lead={lead}
-                    onClick={() => setSelectedLead(lead)}
-                  />
-                ))}
+                <SortableContext
+                  items={stageLeads.map(l => l.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {stageLeads.length === 0 && (
+                    <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl p-4 text-center">
+                      <p className="text-xs text-gray-400">Solte um lead aqui</p>
+                    </div>
+                  )}
+                  {stageLeads.map(lead => (
+                    <SortableLeadCard
+                      key={lead.id}
+                      lead={lead}
+                      onClick={() => setSelectedLead(lead)}
+                    />
+                  ))}
+                </SortableContext>
               </DroppableStageColumn>
             )
           })}
@@ -360,7 +459,6 @@ export default function LeadsClient({ initialLeads }: Props) {
             </div>
 
             <div className="p-6 space-y-4">
-              {/* Informações */}
               <div className="grid grid-cols-2 gap-4 text-sm">
                 {selectedLead.phone && (
                   <div className="flex items-center gap-2 text-gray-700">
@@ -382,7 +480,6 @@ export default function LeadsClient({ initialLeads }: Props) {
                 <div className="bg-gray-50 rounded-xl p-3 text-sm text-gray-600">{selectedLead.notes}</div>
               )}
 
-              {/* Ações rápidas */}
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-gray-500 uppercase">Ações</p>
                 <div className="grid grid-cols-2 gap-2">
@@ -401,7 +498,6 @@ export default function LeadsClient({ initialLeads }: Props) {
                 </div>
               </div>
 
-              {/* Mover de estágio */}
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-gray-500 uppercase">Mover para</p>
                 <div className="flex flex-wrap gap-2">
@@ -417,7 +513,6 @@ export default function LeadsClient({ initialLeads }: Props) {
                 </div>
               </div>
 
-              {/* Botão converter */}
               {selectedLead.funnel_stage !== 'closed' && (
                 <Button
                   variant="primary"
