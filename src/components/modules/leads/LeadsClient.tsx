@@ -155,7 +155,7 @@ export default function LeadsClient({ initialLeads }: Props) {
   })
 
   const filteredLeads = filterStage === 'all'
-    ? leads.filter(l => l.funnel_stage !== 'closed' && l.funnel_stage !== 'disqualified')
+    ? leads
     : leads.filter(l => l.funnel_stage === filterStage)
 
   const leadsByStage = STAGES.reduce((acc, stage) => {
@@ -247,7 +247,7 @@ export default function LeadsClient({ initialLeads }: Props) {
 
       {/* Filtros por estágio */}
       <div className="flex gap-2 flex-wrap">
-        {([['all', 'Ativos'], ...STAGES.map(s => [s, LEAD_STAGE_LABELS[s]])] as [string, string][]).map(([stage, label]) => (
+        {([['all', 'Todos'], ...STAGES.map(s => [s, LEAD_STAGE_LABELS[s]])] as [string, string][]).map(([stage, label]) => (
           <button
             key={stage}
             onClick={() => setFilterStage(stage as LeadStage | 'all')}
@@ -261,7 +261,7 @@ export default function LeadsClient({ initialLeads }: Props) {
             {label}
             <span className="ml-1.5 opacity-70">
               {stage === 'all'
-                ? leads.filter(l => l.funnel_stage !== 'closed' && l.funnel_stage !== 'disqualified').length
+                ? leads.length
                 : leads.filter(l => l.funnel_stage === stage).length}
             </span>
           </button>
