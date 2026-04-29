@@ -13,7 +13,7 @@ const SERVICE_OPTIONS = SERVICES.map(s=>({value:s,label:s}))
 
 const PAYMENT_BADGE: Record<PaymentStatus, 'yellow'|'blue'|'green'> = { pending:'yellow','50%':'blue','100%':'green' }
 
-export default function SalesClient({ initialSales, clients }: { initialSales: Sale[]; clients: Client[] }) {
+export default function SalesClient({ initialSales, clients }: { initialSales: Sale[]; clients: Pick<Client, 'id' | 'name'>[] }) {
   const supabase = createClient()
   const [sales, setSales] = useState<Sale[]>(initialSales)
   const [showForm, setShowForm] = useState(false)

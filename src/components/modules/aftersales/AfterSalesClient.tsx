@@ -25,7 +25,7 @@ export default function AfterSalesClient({ initialAftersales }: { initialAftersa
       next_contact: nextContact || null, contacted: true
     }).eq('id', id)
     if (error) { toast.error('Erro'); return }
-    setAftersales(prev => prev.map(a => a.id === id ? {...a, nps_score:nps, feedback, upsell_interest:upsell, next_contact:nextContact||null, contacted:true} : a))
+    setAftersales(prev => prev.map(a => a.id === id ? {...a, nps_score:nps, feedback, upsell_interest:upsell, next_contact:nextContact||undefined, contacted:true} : a))
     setEditing(null)
     toast.success('Pós-venda salvo!')
   }
