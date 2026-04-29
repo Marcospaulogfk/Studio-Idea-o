@@ -61,7 +61,7 @@ export default function FinancialClient({ initialFinancials }: { initialFinancia
         {(['all','receivable','payable'] as const).map(t=>(
           <button key={t} onClick={()=>setFilter(t)}
             className={cn('px-3 py-1.5 rounded-xl text-xs font-medium border transition-all',
-              filter===t?'bg-brand-700 text-white border-brand-700':'bg-white text-gray-600 border-gray-200')}>
+              filter===t?'bg-orange-700 text-white border-orange-700':'bg-white text-gray-600 border-gray-200')}>
             {t==='all'?'Todos':t==='receivable'?'A Receber':'A Pagar'}
           </button>
         ))}
@@ -95,7 +95,7 @@ export default function FinancialClient({ initialFinancials }: { initialFinancia
                   </Badge>
                 </td>
                 <td className="px-4 py-3">
-                  {f.status!=='paid'&&<button onClick={()=>markPaid(f)} className="text-xs text-brand-700 hover:underline font-medium">Marcar pago</button>}
+                  {f.status!=='paid'&&<button onClick={()=>markPaid(f)} className="text-xs text-orange-700 hover:underline font-medium">Marcar pago</button>}
                 </td>
               </tr>
             ))}

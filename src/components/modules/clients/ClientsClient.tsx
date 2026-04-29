@@ -54,7 +54,7 @@ export default function ClientsClient({ initialClients }: { initialClients: Clie
         <input
           value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Buscar por nome, telefone ou CNPJ..."
-          className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
         />
       </div>
 
@@ -71,8 +71,8 @@ export default function ClientsClient({ initialClients }: { initialClients: Clie
                   onClick={() => setExpandedId(expandedId === client.id ? null : client.id)}
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-9 h-9 bg-brand-100 rounded-xl flex items-center justify-center">
-                      <span className="text-brand-700 font-bold text-sm">{client.name[0].toUpperCase()}</span>
+                    <div className="w-9 h-9 bg-orange-100 rounded-xl flex items-center justify-center">
+                      <span className="text-orange-700 font-bold text-sm">{client.name[0].toUpperCase()}</span>
                     </div>
                     <div>
                       <p className="font-semibold text-gray-900 text-sm">{client.name}</p>

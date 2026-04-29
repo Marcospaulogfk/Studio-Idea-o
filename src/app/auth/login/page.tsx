@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useFormState, useFormStatus } from 'react-dom'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
+import Image from 'next/image'
 import { login } from './actions'
 
 function SubmitButton() {
@@ -11,7 +12,7 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="w-full bg-brand-700 hover:bg-brand-800 text-white font-semibold py-3 px-4 rounded-xl transition-colors disabled:opacity-70 flex items-center justify-center gap-2 mt-2"
+      className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-200 disabled:opacity-70 flex items-center justify-center gap-2 mt-2 shadow-orange-glow hover:shadow-orange-glow-lg"
     >
       {pending && <Loader2 size={18} className="animate-spin" />}
       {pending ? 'Entrando...' : 'Entrar'}
@@ -24,14 +25,22 @@ export default function LoginPage() {
   const [state, formAction] = useFormState(login, null)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-brand-700 via-brand-800 to-brand-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-orange-950 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Glows decorativos */}
+      <div className="absolute -top-32 -right-32 w-96 h-96 bg-orange-500/20 rounded-full blur-3xl" />
+      <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-orange-600/10 rounded-full blur-3xl" />
+
+      <div className="w-full max-w-md relative">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-white/10 rounded-2xl mb-4 backdrop-blur-sm border border-white/20">
-            <span className="text-2xl font-bold text-white">SI</span>
-          </div>
-          <h1 className="text-3xl font-bold text-white">Studio Ideação</h1>
-          <p className="text-brand-200 mt-1 text-sm">CRM · ERP · Business Intelligence</p>
+          <Image
+            src="/img/logo-studio-white.svg"
+            alt="Studio Ideação"
+            width={260}
+            height={52}
+            priority
+            className="mx-auto mb-3 h-12 w-auto"
+          />
+          <p className="text-orange-200/80 text-xs tracking-widest uppercase">CRM · ERP · Business Intelligence</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-2xl p-8">
@@ -51,7 +60,7 @@ export default function LoginPage() {
                 name="email"
                 placeholder="seu@email.com"
                 required
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
               />
             </div>
 
@@ -63,7 +72,7 @@ export default function LoginPage() {
                   name="password"
                   placeholder="••••••••"
                   required
-                  className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
                 />
                 <button
                   type="button"
@@ -78,14 +87,14 @@ export default function LoginPage() {
             <SubmitButton />
 
             <div className="text-center mt-3">
-              <a href="/auth/reset-password" className="text-xs text-gray-400 hover:text-brand-700 transition-colors">
+              <a href="/auth/reset-password" className="text-xs text-gray-400 hover:text-orange-600 transition-colors">
                 Esqueci minha senha
               </a>
             </div>
           </form>
         </div>
 
-        <p className="text-center text-brand-300 text-xs mt-6">
+        <p className="text-center text-orange-200/60 text-xs mt-6">
           Studio Ideação Ltda · Sistema interno
         </p>
       </div>

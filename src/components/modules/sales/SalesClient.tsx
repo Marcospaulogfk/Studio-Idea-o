@@ -96,7 +96,7 @@ export default function SalesClient({ initialSales, clients }: { initialSales: S
         {(['all','pending','50%','100%'] as const).map(s=>(
           <button key={s} onClick={()=>setFilterStatus(s)}
             className={cn('px-3 py-1.5 rounded-xl text-xs font-medium border transition-all',
-              filterStatus===s ? 'bg-brand-700 text-white border-brand-700' : 'bg-white text-gray-600 border-gray-200 hover:border-brand-300')}>
+              filterStatus===s ? 'bg-orange-700 text-white border-orange-700' : 'bg-white text-gray-600 border-gray-200 hover:border-orange-300')}>
             {s==='all'?'Todas':PAYMENT_STATUS_LABELS[s]}
             <span className="ml-1.5 opacity-70">{s==='all'?sales.length:sales.filter(x=>x.payment_status===s).length}</span>
           </button>
@@ -129,7 +129,7 @@ export default function SalesClient({ initialSales, clients }: { initialSales: S
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">
-                      {sale.services.slice(0,2).map(s=><span key={s} className="text-xs bg-brand-50 text-brand-700 px-2 py-0.5 rounded-full">{s}</span>)}
+                      {sale.services.slice(0,2).map(s=><span key={s} className="text-xs bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full">{s}</span>)}
                       {sale.services.length > 2 && <span className="text-xs text-gray-400">+{sale.services.length-2}</span>}
                     </div>
                   </td>
@@ -147,7 +147,7 @@ export default function SalesClient({ initialSales, clients }: { initialSales: S
                     {sale.payment_status !== '100%' && (
                       <button
                         onClick={() => handleUpdatePayment(sale, sale.payment_status === 'pending' ? '50%' : '100%')}
-                        className="text-xs text-brand-700 hover:underline font-medium"
+                        className="text-xs text-orange-700 hover:underline font-medium"
                       >
                         {sale.payment_status === 'pending' ? 'Marcar 50%' : 'Marcar pago'}
                       </button>
@@ -177,7 +177,7 @@ export default function SalesClient({ initialSales, clients }: { initialSales: S
                   {SERVICES.map(svc=>(
                     <button key={svc} type="button" onClick={()=>toggleService(svc)}
                       className={cn('px-3 py-1.5 rounded-xl text-xs font-medium border transition-all',
-                        form.services.includes(svc) ? 'bg-brand-700 text-white border-brand-700' : 'bg-white text-gray-600 border-gray-200 hover:border-brand-300')}>
+                        form.services.includes(svc) ? 'bg-orange-700 text-white border-orange-700' : 'bg-white text-gray-600 border-gray-200 hover:border-orange-300')}>
                       {svc}
                     </button>
                   ))}

@@ -348,8 +348,8 @@ export default function LeadsClient({ initialLeads }: Props) {
             className={cn(
               'px-3 py-1.5 rounded-xl text-xs font-medium transition-all border',
               filterStage === stage
-                ? 'bg-brand-700 text-white border-brand-700'
-                : 'bg-white text-gray-600 border-gray-200 hover:border-brand-300'
+                ? 'bg-orange-700 text-white border-orange-700'
+                : 'bg-white text-gray-600 border-gray-200 hover:border-orange-300'
             )}
           >
             {label}
@@ -505,7 +505,7 @@ export default function LeadsClient({ initialLeads }: Props) {
                     <button
                       key={stage}
                       onClick={() => handleStageChange(selectedLead, stage)}
-                      className="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-xl hover:bg-brand-50 hover:text-brand-700 transition-colors"
+                      className="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-xl hover:bg-orange-50 hover:text-orange-700 transition-colors"
                     >
                       {LEAD_STAGE_LABELS[stage]}
                     </button>

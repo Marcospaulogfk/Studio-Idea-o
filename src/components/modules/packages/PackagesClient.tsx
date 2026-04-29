@@ -39,7 +39,7 @@ export default function PackagesClient({ initialPackages }: { initialPackages: P
         {(['all','active','inactive','expired'] as const).map(s=>(
           <button key={s} onClick={()=>setFilter(s)}
             className={cn('px-3 py-1.5 rounded-xl text-xs font-medium border transition-all',
-              filter===s?'bg-brand-700 text-white border-brand-700':'bg-white text-gray-600 border-gray-200')}>
+              filter===s?'bg-orange-700 text-white border-orange-700':'bg-white text-gray-600 border-gray-200')}>
             {s==='all'?'Todos':s==='active'?'Ativos':s==='inactive'?'Finalizados':'Expirados'}
             <span className="ml-1.5 opacity-70">{s==='all'?packages.length:packages.filter(p=>p.status===s).length}</span>
           </button>
@@ -86,7 +86,7 @@ export default function PackagesClient({ initialPackages }: { initialPackages: P
 
               {pkg.status === 'active' && pkg.arts_used < pkg.arts_total && (
                 <button onClick={()=>markUsed(pkg)}
-                  className="w-full text-xs font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 py-2 rounded-xl transition-colors">
+                  className="w-full text-xs font-medium text-orange-700 bg-orange-50 hover:bg-orange-100 py-2 rounded-xl transition-colors">
                   + Registrar Arte Utilizada
                 </button>
               )}

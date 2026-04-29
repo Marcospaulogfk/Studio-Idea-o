@@ -4,6 +4,17 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Loader2, ArrowLeft, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
+import Image from 'next/image'
+
+function AuthShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-orange-950 flex items-center justify-center p-4 relative overflow-hidden">
+      <div className="absolute -top-32 -right-32 w-96 h-96 bg-orange-500/20 rounded-full blur-3xl" />
+      <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-orange-600/10 rounded-full blur-3xl" />
+      {children}
+    </div>
+  )
+}
 
 export default function ResetPasswordPage() {
   const supabase = createClient()
@@ -33,8 +44,8 @@ export default function ResetPasswordPage() {
 
   if (sent) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-brand-700 via-brand-800 to-brand-900 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md text-center">
+      <AuthShell>
+        <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md text-center relative">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle size={32} className="text-green-600" />
           </div>
@@ -42,23 +53,20 @@ export default function ResetPasswordPage() {
           <p className="text-gray-500 mt-2 text-sm">
             Verifique a caixa de entrada de <strong>{email}</strong> e clique no link para definir sua senha.
           </p>
-          <Link href="/auth/login" className="inline-block mt-6 text-sm text-brand-700 hover:underline font-medium">
+          <Link href="/auth/login" className="inline-block mt-6 text-sm text-orange-600 hover:text-orange-700 font-medium">
             Voltar para o login
           </Link>
         </div>
-      </div>
+      </AuthShell>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-brand-700 via-brand-800 to-brand-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <AuthShell>
+      <div className="w-full max-w-md relative">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-white/10 rounded-2xl mb-4">
-            <span className="text-2xl font-bold text-white">SI</span>
-          </div>
-          <h1 className="text-3xl font-bold text-white">Studio Ideação</h1>
-          <p className="text-brand-200 mt-1 text-sm">Recuperação de acesso</p>
+          <Image src="/img/logo-studio-white.svg" alt="Studio Ideação" width={260} height={52} priority className="mx-auto mb-3 h-12 w-auto"/>
+          <p className="text-orange-200/80 text-xs tracking-widest uppercase">Recuperação de acesso</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-2xl p-8">
@@ -78,25 +86,25 @@ export default function ResetPasswordPage() {
                 onChange={e => setEmail(e.target.value)}
                 placeholder="seu@email.com"
                 required
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-brand-700 hover:bg-brand-800 text-white font-semibold py-3 px-4 rounded-xl transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
+              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-200 disabled:opacity-70 flex items-center justify-center gap-2 shadow-orange-glow hover:shadow-orange-glow-lg"
             >
               {loading && <Loader2 size={18} className="animate-spin" />}
               {loading ? 'Enviando...' : 'Enviar link de recuperação'}
             </button>
           </form>
 
-          <Link href="/auth/login" className="flex items-center justify-center gap-1 mt-4 text-sm text-gray-500 hover:text-gray-700">
+          <Link href="/auth/login" className="flex items-center justify-center gap-1 mt-4 text-sm text-gray-500 hover:text-gray-700 transition-colors">
             <ArrowLeft size={14} /> Voltar para o login
           </Link>
         </div>
       </div>
-    </div>
+    </AuthShell>
   )
 }

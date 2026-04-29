@@ -105,7 +105,7 @@ export default function AfterSalesClient({ initialAftersales }: { initialAftersa
                   </div>
                   <textarea value={feedback} onChange={e=>setFeedback(e.target.value)}
                     placeholder="Feedback do cliente..."
-                    className="w-full text-xs border border-gray-200 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none" rows={2}/>
+                    className="w-full text-xs border border-gray-200 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none" rows={2}/>
                   <div>
                     <p className="text-xs font-medium text-gray-600 mb-1">Interesse em serviços</p>
                     <div className="flex flex-wrap gap-1">
@@ -119,7 +119,7 @@ export default function AfterSalesClient({ initialAftersales }: { initialAftersa
                     </div>
                   </div>
                   <input type="date" value={nextContact} onChange={e=>setNextContact(e.target.value)}
-                    className="w-full text-xs border border-gray-200 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500"/>
+                    className="w-full text-xs border border-gray-200 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-orange-500"/>
                   <div className="flex gap-2">
                     <Button size="sm" variant="secondary" onClick={()=>setEditing(null)} className="flex-1">Cancelar</Button>
                     <Button size="sm" onClick={()=>saveAfterSale(a.id)} className="flex-1">Salvar</Button>
