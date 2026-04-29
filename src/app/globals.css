@@ -17,12 +17,12 @@
 }
 
 html.dark {
-  --bg:         #0F172A;
-  --card:       #1E293B;
-  --sidebar:    #1C2333;
-  --text:       #F1F5F9;
-  --text-muted: #94A3B8;
-  --border:     #334155;
+  --bg:         #0A0A0A;  /* black piano */
+  --card:       #141414;  /* glossy near-black */
+  --sidebar:    #1C2333;  /* mantém o tom da sidebar */
+  --text:       #FAFAFA;
+  --text-muted: #A3A3A3;
+  --border:     #262626;
 }
 
 * { box-sizing: border-box; }

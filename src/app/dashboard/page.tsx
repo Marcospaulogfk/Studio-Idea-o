@@ -59,8 +59,8 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Dashboard</h1>
-        <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">Visão geral do Studio Ideação</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-neutral-100">Dashboard</h1>
+        <p className="text-sm text-gray-500 dark:text-neutral-400 mt-0.5">Visão geral do Studio Ideação</p>
       </div>
 
       {/* KPIs */}
@@ -77,7 +77,7 @@ export default async function DashboardPage() {
           <CardHeader
             title="Serviços mais vendidos"
             subtitle="Top 6 do histórico"
-            action={<PieChart size={18} className="text-gray-300 dark:text-slate-600"/>}
+            action={<PieChart size={18} className="text-gray-300 dark:text-neutral-600"/>}
           />
           <ServicesPieChart data={topServices} />
         </Card>
@@ -86,7 +86,7 @@ export default async function DashboardPage() {
           <CardHeader
             title="Receita por canal"
             subtitle="Mês atual"
-            action={<BarChart3 size={18} className="text-gray-300 dark:text-slate-600"/>}
+            action={<BarChart3 size={18} className="text-gray-300 dark:text-neutral-600"/>}
           />
           <OriginBarChart data={originData} />
         </Card>
@@ -95,13 +95,13 @@ export default async function DashboardPage() {
           <CardHeader
             title="Meta do mês"
             subtitle={formatCurrency(MONTHLY_GOAL)}
-            action={<Target size={18} className="text-gray-300 dark:text-slate-600"/>}
+            action={<Target size={18} className="text-gray-300 dark:text-neutral-600"/>}
           />
           <div className="flex flex-col items-center gap-4 py-2">
             <CircularProgress value={monthRevenue} max={MONTHLY_GOAL} size={150} label="da meta" />
             <div className="text-center">
-              <p className="text-2xl font-bold text-gray-900 dark:text-slate-100">{formatCurrency(monthRevenue)}</p>
-              <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+              <p className="text-2xl font-bold text-gray-900 dark:text-neutral-100">{formatCurrency(monthRevenue)}</p>
+              <p className="text-xs text-gray-500 dark:text-neutral-400 mt-1">
                 Faltam <span className="font-semibold text-orange-600 dark:text-orange-400">{formatCurrency(Math.max(0, MONTHLY_GOAL - monthRevenue))}</span>
               </p>
             </div>
@@ -118,8 +118,8 @@ export default async function DashboardPage() {
               {recentSales.map((sale: any) => (
                 <div key={sale.id} className="flex items-center justify-between py-2.5 px-2 -mx-2 rounded-lg hover:bg-orange-500/5 transition-colors">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-800 dark:text-slate-200 truncate">{sale.client?.name ?? '—'}</p>
-                    <p className="text-xs text-gray-500 dark:text-slate-400 truncate">{sale.services?.slice(0,2).join(', ')}</p>
+                    <p className="text-sm font-medium text-gray-800 dark:text-neutral-200 truncate">{sale.client?.name ?? '—'}</p>
+                    <p className="text-xs text-gray-500 dark:text-neutral-400 truncate">{sale.services?.slice(0,2).join(', ')}</p>
                   </div>
                   <p className="text-sm font-bold text-green-600 dark:text-green-400 ml-3 shrink-0">{formatCurrency(sale.total_value)}</p>
                 </div>
@@ -137,8 +137,8 @@ export default async function DashboardPage() {
               {recentLeads.map((lead: any) => (
                 <div key={lead.id} className="flex items-center justify-between py-2.5 px-2 -mx-2 rounded-lg hover:bg-orange-500/5 transition-colors">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-800 dark:text-slate-200 truncate">{lead.name}</p>
-                    <p className="text-xs text-gray-500 dark:text-slate-400 truncate">{lead.service ?? 'Sem serviço'}</p>
+                    <p className="text-sm font-medium text-gray-800 dark:text-neutral-200 truncate">{lead.name}</p>
+                    <p className="text-xs text-gray-500 dark:text-neutral-400 truncate">{lead.service ?? 'Sem serviço'}</p>
                   </div>
                   <Badge variant={
                     lead.funnel_stage === 'closed' ? 'green' :

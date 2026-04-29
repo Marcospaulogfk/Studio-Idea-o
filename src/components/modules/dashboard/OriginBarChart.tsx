@@ -21,7 +21,7 @@ export function OriginBarChart({ data }: { data: OriginRow[] }) {
     <div className="h-64">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={rows} layout="vertical" margin={{ left: 10, right: 30, top: 10, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" horizontal={false} className="stroke-gray-100 dark:stroke-slate-700" />
+          <CartesianGrid strokeDasharray="3 3" horizontal={false} className="stroke-gray-100 dark:stroke-neutral-800" />
           <XAxis type="number" tickFormatter={fmt} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} stroke="var(--text-muted)" />
           <YAxis type="category" dataKey="label" tick={{ fontSize: 12, fill: 'var(--text-muted)' }} stroke="var(--text-muted)" width={90} />
           <Tooltip

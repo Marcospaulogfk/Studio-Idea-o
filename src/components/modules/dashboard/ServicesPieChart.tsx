@@ -49,8 +49,8 @@ export function ServicesPieChart({ data }: { data: ServiceSlice[] }) {
         {top.map((s, i) => (
           <li key={s.service} className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: PALETTE[i % PALETTE.length] }} />
-            <span className="text-gray-700 dark:text-slate-300 truncate flex-1">{s.service}</span>
-            <span className="text-xs font-semibold text-gray-900 dark:text-slate-100">{s.count}</span>
+            <span className="text-gray-700 dark:text-neutral-300 truncate flex-1">{s.service}</span>
+            <span className="text-xs font-semibold text-gray-900 dark:text-neutral-100">{s.count}</span>
           </li>
         ))}
       </ul>
