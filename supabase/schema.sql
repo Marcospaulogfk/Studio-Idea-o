@@ -382,6 +382,7 @@ CREATE TRIGGER trg_package_inserted
 -- ============================================================
 
 -- Job 1: leads sem contato há 7 dias → mover para 'future'
+SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'daily_followup_check';
 SELECT cron.schedule(
   'daily_followup_check',
   '0 8 * * *',
@@ -403,6 +404,7 @@ SELECT cron.schedule(
 );
 
 -- Job 2: pacotes expirando em 15 e 7 dias → notificações
+SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'package_expiry_check';
 SELECT cron.schedule(
   'package_expiry_check',
   '0 8 * * *',
@@ -448,37 +450,40 @@ ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE users       ENABLE ROW LEVEL SECURITY;
 
 -- Admin: acesso total
-CREATE POLICY "admin_all" ON clients       FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
-CREATE POLICY "admin_all" ON leads         FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
-CREATE POLICY "admin_all" ON followups     FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
-CREATE POLICY "admin_all" ON sales         FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
-CREATE POLICY "admin_all" ON packages      FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
-CREATE POLICY "admin_all" ON productions   FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
-CREATE POLICY "admin_all" ON financials    FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
-CREATE POLICY "admin_all" ON aftersales    FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
-CREATE POLICY "admin_all" ON file_assets   FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
-CREATE POLICY "admin_all" ON notifications FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
-CREATE POLICY "admin_all" ON users         FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
+DROP POLICY IF EXISTS "admin_all" ON clients;       CREATE POLICY "admin_all" ON clients       FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
+DROP POLICY IF EXISTS "admin_all" ON leads;         CREATE POLICY "admin_all" ON leads         FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
+DROP POLICY IF EXISTS "admin_all" ON followups;     CREATE POLICY "admin_all" ON followups     FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
+DROP POLICY IF EXISTS "admin_all" ON sales;         CREATE POLICY "admin_all" ON sales         FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
+DROP POLICY IF EXISTS "admin_all" ON packages;      CREATE POLICY "admin_all" ON packages      FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
+DROP POLICY IF EXISTS "admin_all" ON productions;   CREATE POLICY "admin_all" ON productions   FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
+DROP POLICY IF EXISTS "admin_all" ON financials;    CREATE POLICY "admin_all" ON financials    FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
+DROP POLICY IF EXISTS "admin_all" ON aftersales;    CREATE POLICY "admin_all" ON aftersales    FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
+DROP POLICY IF EXISTS "admin_all" ON file_assets;   CREATE POLICY "admin_all" ON file_assets   FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
+DROP POLICY IF EXISTS "admin_all" ON notifications; CREATE POLICY "admin_all" ON notifications FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
+DROP POLICY IF EXISTS "admin_all" ON users;         CREATE POLICY "admin_all" ON users         FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
 
 -- Manager: acesso a tudo exceto financeiro completo
-CREATE POLICY "manager_read" ON financials FOR SELECT USING (auth.jwt() ->> 'role' IN ('admin','manager'));
-CREATE POLICY "manager_all"  ON clients    FOR ALL USING (auth.jwt() ->> 'role' IN ('admin','manager'));
-CREATE POLICY "manager_all"  ON leads      FOR ALL USING (auth.jwt() ->> 'role' IN ('admin','manager'));
-CREATE POLICY "manager_all"  ON sales      FOR ALL USING (auth.jwt() ->> 'role' IN ('admin','manager'));
+DROP POLICY IF EXISTS "manager_read" ON financials; CREATE POLICY "manager_read" ON financials FOR SELECT USING (auth.jwt() ->> 'role' IN ('admin','manager'));
+DROP POLICY IF EXISTS "manager_all"  ON clients;    CREATE POLICY "manager_all"  ON clients    FOR ALL USING (auth.jwt() ->> 'role' IN ('admin','manager'));
+DROP POLICY IF EXISTS "manager_all"  ON leads;      CREATE POLICY "manager_all"  ON leads      FOR ALL USING (auth.jwt() ->> 'role' IN ('admin','manager'));
+DROP POLICY IF EXISTS "manager_all"  ON sales;      CREATE POLICY "manager_all"  ON sales      FOR ALL USING (auth.jwt() ->> 'role' IN ('admin','manager'));
 
 -- Operator: apenas produção e leads atribuídos
+DROP POLICY IF EXISTS "operator_productions" ON productions;
 CREATE POLICY "operator_productions" ON productions
   FOR ALL USING (
     auth.jwt() ->> 'role' = 'operator' AND
     assigned_to = (auth.jwt() ->> 'sub')::UUID
   );
 
+DROP POLICY IF EXISTS "operator_leads" ON leads;
 CREATE POLICY "operator_leads" ON leads
   FOR SELECT USING (
     auth.jwt() ->> 'role' = 'operator' AND
     assigned_to = (auth.jwt() ->> 'sub')::UUID
   );
 
+DROP POLICY IF EXISTS "operator_notifications" ON notifications;
 CREATE POLICY "operator_notifications" ON notifications
   FOR ALL USING (
     user_id = (auth.jwt() ->> 'sub')::UUID OR user_id IS NULL
