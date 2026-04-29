@@ -1,11 +1,22 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  PointerSensor,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core'
 import { createClient } from '@/lib/supabase/client'
 import { Lead, LeadStage, LEAD_STAGE_LABELS, ORIGIN_LABELS, LeadOrigin, SERVICES } from '@/types'
-import { Button, Badge, Card, Input, Select, Textarea, PageHeader, EmptyState } from '@/components/ui'
+import { Button, Badge, Input, Select, Textarea, PageHeader } from '@/components/ui'
 import { formatCurrency, formatRelative, getFollowupUrgency, cn } from '@/lib/utils'
-import { Plus, Phone, Clock, ChevronRight, X, CheckCircle, Calendar, AlertCircle, Filter } from 'lucide-react'
+import { Plus, Phone, Clock, ChevronRight, X, CheckCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const STAGES: LeadStage[] = ['new', 'negotiating', 'closed', 'disqualified', 'future']
@@ -22,10 +33,107 @@ const STAGE_BADGE: Record<LeadStage, 'blue' | 'yellow' | 'green' | 'red' | 'purp
   new: 'blue', negotiating: 'yellow', closed: 'green', disqualified: 'red', future: 'purple'
 }
 
+const STAGE_RING: Record<LeadStage, string> = {
+  new: 'ring-blue-400',
+  negotiating: 'ring-yellow-400',
+  closed: 'ring-green-400',
+  disqualified: 'ring-red-400',
+  future: 'ring-purple-400',
+}
+
 const ORIGIN_OPTIONS = Object.entries(ORIGIN_LABELS).map(([value, label]) => ({ value, label }))
 const SERVICE_OPTIONS = SERVICES.map(s => ({ value: s, label: s }))
 
 interface Props { initialLeads: Lead[] }
+
+function urgencyBadge(lead: Lead) {
+  const urgency = getFollowupUrgency(lead.last_contact ?? null)
+  if (urgency === 'critical') return <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+  if (urgency === 'warning')  return <span className="w-2 h-2 rounded-full bg-yellow-500" />
+  return null
+}
+
+function LeadCardBody({ lead }: { lead: Lead }) {
+  return (
+    <>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-sm font-semibold text-gray-900 leading-tight">{lead.name}</p>
+        {urgencyBadge(lead)}
+      </div>
+      {lead.service && <p className="text-xs text-gray-500 mt-0.5">{lead.service}</p>}
+      {lead.estimated_value && (
+        <p className="text-xs font-medium text-green-700 mt-1">{formatCurrency(lead.estimated_value)}</p>
+      )}
+      <div className="flex items-center gap-3 mt-2">
+        {lead.origin && (
+          <span className="text-xs text-gray-400">{ORIGIN_LABELS[lead.origin as LeadOrigin]}</span>
+        )}
+        {lead.last_contact && (
+          <span className="text-xs text-gray-400 flex items-center gap-1">
+            <Clock size={10} /> {formatRelative(lead.last_contact)}
+          </span>
+        )}
+      </div>
+    </>
+  )
+}
+
+function DraggableLeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: lead.id,
+    data: { stage: lead.funnel_stage },
+  })
+  const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      onClick={onClick}
+      {...listeners}
+      {...attributes}
+      className={cn(
+        'bg-white border-l-4 rounded-xl p-3 shadow-sm cursor-grab active:cursor-grabbing hover:shadow-md transition-all touch-none',
+        STAGE_COLORS[lead.funnel_stage],
+        isDragging && 'opacity-40 ring-2 ring-brand-400',
+      )}
+    >
+      <LeadCardBody lead={lead} />
+    </div>
+  )
+}
+
+function DroppableStageColumn({
+  stage,
+  isOver,
+  count,
+  children,
+}: {
+  stage: LeadStage
+  isOver: boolean
+  count: number
+  children: React.ReactNode
+}) {
+  const { setNodeRef } = useDroppable({ id: stage })
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Badge variant={STAGE_BADGE[stage]}>{LEAD_STAGE_LABELS[stage]}</Badge>
+          <span className="text-xs text-gray-400 font-medium">{count}</span>
+        </div>
+      </div>
+      <div
+        ref={setNodeRef}
+        className={cn(
+          'space-y-2 min-h-32 rounded-xl p-2 transition-all',
+          isOver && cn('ring-2', STAGE_RING[stage], 'bg-white/40'),
+        )}
+      >
+        {children}
+      </div>
+    </div>
+  )
+}
 
 export default function LeadsClient({ initialLeads }: Props) {
   const supabase = createClient()
@@ -33,7 +141,12 @@ export default function LeadsClient({ initialLeads }: Props) {
   const [showForm, setShowForm] = useState(false)
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
   const [filterStage, setFilterStage] = useState<LeadStage | 'all'>('all')
-  const [isPending, startTransition] = useTransition()
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const [overStage, setOverStage] = useState<LeadStage | null>(null)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+  )
 
   // Formulário
   const [form, setForm] = useState({
@@ -70,14 +183,21 @@ export default function LeadsClient({ initialLeads }: Props) {
   }
 
   async function handleStageChange(lead: Lead, newStage: LeadStage) {
+    if (lead.funnel_stage === newStage) return
+
+    setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, funnel_stage: newStage } : l))
+    if (selectedLead?.id === lead.id) setSelectedLead({ ...lead, funnel_stage: newStage })
+
     const { error } = await supabase
       .from('leads')
       .update({ funnel_stage: newStage, updated_at: new Date().toISOString() })
       .eq('id', lead.id)
 
-    if (error) { toast.error('Erro ao atualizar status'); return }
-    setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, funnel_stage: newStage } : l))
-    if (selectedLead?.id === lead.id) setSelectedLead({ ...lead, funnel_stage: newStage })
+    if (error) {
+      toast.error('Erro ao atualizar status')
+      setLeads(prev => prev.map(l => l.id === lead.id ? lead : l))
+      return
+    }
     toast.success('Status atualizado!')
   }
 
@@ -96,12 +216,22 @@ export default function LeadsClient({ initialLeads }: Props) {
     toast.success('Contato registrado!')
   }
 
-  const urgencyBadge = (lead: Lead) => {
-    const urgency = getFollowupUrgency(lead.last_contact ?? null)
-    if (urgency === 'critical') return <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-    if (urgency === 'warning')  return <span className="w-2 h-2 rounded-full bg-yellow-500" />
-    return null
+  function handleDragStart(event: DragStartEvent) {
+    setActiveId(String(event.active.id))
   }
+
+  function handleDragEnd(event: DragEndEvent) {
+    setActiveId(null)
+    setOverStage(null)
+    const { active, over } = event
+    if (!over) return
+    const newStage = over.id as LeadStage
+    const lead = leads.find(l => l.id === active.id)
+    if (!lead) return
+    handleStageChange(lead, newStage)
+  }
+
+  const activeLead = activeId ? leads.find(l => l.id === activeId) : null
 
   return (
     <div className="space-y-6">
@@ -138,63 +268,50 @@ export default function LeadsClient({ initialLeads }: Props) {
         ))}
       </div>
 
-      {/* Kanban */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-        {STAGES.map(stage => {
-          const stageLeads = leadsByStage[stage] ?? []
-          if (filterStage !== 'all' && filterStage !== stage) return null
-
-          return (
-            <div key={stage} className="space-y-3">
-              {/* Coluna header */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Badge variant={STAGE_BADGE[stage]}>{LEAD_STAGE_LABELS[stage]}</Badge>
-                  <span className="text-xs text-gray-400 font-medium">{stageLeads.length}</span>
-                </div>
-              </div>
-
-              {/* Cards */}
-              <div className="space-y-2 min-h-16">
+      {/* Kanban com DnD */}
+      <DndContext
+        sensors={sensors}
+        onDragStart={handleDragStart}
+        onDragOver={(e) => setOverStage(e.over ? (e.over.id as LeadStage) : null)}
+        onDragEnd={handleDragEnd}
+        onDragCancel={() => { setActiveId(null); setOverStage(null) }}
+      >
+        <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+          {STAGES.map(stage => {
+            if (filterStage !== 'all' && filterStage !== stage) return null
+            const stageLeads = leadsByStage[stage] ?? []
+            return (
+              <DroppableStageColumn
+                key={stage}
+                stage={stage}
+                isOver={overStage === stage}
+                count={stageLeads.length}
+              >
                 {stageLeads.length === 0 && (
                   <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl p-4 text-center">
-                    <p className="text-xs text-gray-400">Vazio</p>
+                    <p className="text-xs text-gray-400">Solte um lead aqui</p>
                   </div>
                 )}
                 {stageLeads.map(lead => (
-                  <div
+                  <DraggableLeadCard
                     key={lead.id}
+                    lead={lead}
                     onClick={() => setSelectedLead(lead)}
-                    className={cn(
-                      'bg-white border-l-4 rounded-xl p-3 shadow-sm cursor-pointer hover:shadow-md transition-all',
-                      STAGE_COLORS[lead.funnel_stage]
-                    )}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm font-semibold text-gray-900 leading-tight">{lead.name}</p>
-                      {urgencyBadge(lead)}
-                    </div>
-                    {lead.service && <p className="text-xs text-gray-500 mt-0.5">{lead.service}</p>}
-                    {lead.estimated_value && (
-                      <p className="text-xs font-medium text-green-700 mt-1">{formatCurrency(lead.estimated_value)}</p>
-                    )}
-                    <div className="flex items-center gap-3 mt-2">
-                      {lead.origin && (
-                        <span className="text-xs text-gray-400">{ORIGIN_LABELS[lead.origin as LeadOrigin]}</span>
-                      )}
-                      {lead.last_contact && (
-                        <span className="text-xs text-gray-400 flex items-center gap-1">
-                          <Clock size={10} /> {formatRelative(lead.last_contact)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                  />
                 ))}
-              </div>
+              </DroppableStageColumn>
+            )
+          })}
+        </div>
+
+        <DragOverlay>
+          {activeLead && (
+            <div className={cn('bg-white border-l-4 rounded-xl p-3 shadow-2xl rotate-2 cursor-grabbing', STAGE_COLORS[activeLead.funnel_stage])}>
+              <LeadCardBody lead={activeLead} />
             </div>
-          )
-        })}
-      </div>
+          )}
+        </DragOverlay>
+      </DndContext>
 
       {/* Modal: Novo Lead */}
       {showForm && (
