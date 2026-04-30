@@ -30,14 +30,29 @@ const NAV: NavItem[] = [
   { href: '/aftersales', label: 'Pós-Venda',  icon: Star,            group: 'ops' },
 ]
 
-export function Sidebar({ notifications = 0 }: { notifications?: number }) {
+export function Sidebar({ notifications: initialCount = 0 }: { notifications?: number }) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
+  const [unreadCount, setUnreadCount] = useState<number>(initialCount)
 
   useEffect(() => setMounted(true), [])
+
+  // Busca contagem de não lidas + atualiza quando o user muda de rota
+  useEffect(() => {
+    let cancelled = false
+    async function fetchCount() {
+      const { count } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('read', false)
+      if (!cancelled && typeof count === 'number') setUnreadCount(count)
+    }
+    fetchCount()
+    return () => { cancelled = true }
+  }, [pathname, supabase])
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -102,9 +117,9 @@ export function Sidebar({ notifications = 0 }: { notifications?: number }) {
         >
           <Bell size={18} className="text-gray-400 dark:text-slate-400 group-hover:text-orange-500 dark:group-hover:text-orange-400 transition-colors duration-200" />
           <span className="flex-1">Notificações</span>
-          {notifications > 0 && (
-            <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
-              {notifications}
+          {unreadCount > 0 && (
+            <span className="bg-orange-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+              {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
         </Link>
