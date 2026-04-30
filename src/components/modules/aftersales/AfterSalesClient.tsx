@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { AfterSale, SERVICES } from '@/types'
 import { Button, Badge, Card, PageHeader, KpiCard } from '@/components/ui'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
-import { Star, CheckCircle, Calendar } from 'lucide-react'
+import { Star, CheckCircle, Calendar, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function AfterSalesClient({ initialAftersales }: { initialAftersales: AfterSale[] }) {
@@ -18,6 +18,14 @@ export default function AfterSalesClient({ initialAftersales }: { initialAftersa
 
   const contacted = aftersales.filter(a => a.contacted).length
   const avgNps = aftersales.filter(a=>a.nps_score).reduce((s,a)=>s+(a.nps_score??0),0) / (aftersales.filter(a=>a.nps_score).length || 1)
+
+  async function handleDelete(id: string) {
+    if (!confirm('Excluir este registro de pós-venda?')) return
+    const { error } = await supabase.from('aftersales').delete().eq('id', id)
+    if (error) { toast.error('Erro ao excluir'); return }
+    setAftersales(prev => prev.filter(a => a.id !== id))
+    toast.success('Pós-venda excluído')
+  }
 
   async function saveAfterSale(id: string) {
     const { error } = await supabase.from('aftersales').update({
@@ -47,14 +55,17 @@ export default function AfterSalesClient({ initialAftersales }: { initialAftersa
           const isEditing = editing === a.id
           return (
             <Card key={a.id} className={cn('border-l-4', a.contacted ? 'border-l-green-500' : 'border-l-yellow-500')}>
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <p className="font-semibold text-gray-900">{client?.name ?? '—'}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{sale?.services?.join(', ') ?? '—'} · {sale?.total_value ? formatCurrency(sale.total_value) : ''}</p>
+              <div className="flex items-start justify-between mb-3 group">
+                <div className="min-w-0">
+                  <p className="font-semibold text-gray-900 dark:text-neutral-100 truncate">{client?.name ?? '—'}</p>
+                  <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5 truncate">{sale?.services?.join(', ') ?? '—'} · {sale?.total_value ? formatCurrency(sale.total_value) : ''}</p>
                 </div>
-                <Badge variant={a.contacted ? 'green' : 'yellow'}>
-                  {a.contacted ? 'Contatado' : 'Pendente'}
-                </Badge>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Badge variant={a.contacted ? 'green' : 'yellow'} pulse={!a.contacted}>
+                    {a.contacted ? 'Contatado' : 'Pendente'}
+                  </Badge>
+                  <button onClick={()=>handleDelete(a.id)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all" title="Excluir"><Trash2 size={14}/></button>
+                </div>
               </div>
 
               {a.nps_score && (

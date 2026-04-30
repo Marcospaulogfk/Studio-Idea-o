@@ -24,7 +24,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Lead, LeadStage, LEAD_STAGE_LABELS, ORIGIN_LABELS, LeadOrigin, SERVICES } from '@/types'
 import { Button, Badge, Input, Select, Textarea, PageHeader } from '@/components/ui'
 import { formatCurrency, formatRelative, getFollowupUrgency, cn } from '@/lib/utils'
-import { Plus, Phone, Clock, ChevronRight, X, CheckCircle, GripVertical } from 'lucide-react'
+import { Plus, Phone, Clock, ChevronRight, X, CheckCircle, GripVertical, Pencil, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const STAGES: LeadStage[] = ['new', 'negotiating', 'closed', 'disqualified', 'future']
@@ -191,24 +191,59 @@ export default function LeadsClient({ initialLeads }: Props) {
 
   const overStage = overId ? findStage(overId) : null
 
-  async function handleCreate(e: React.FormEvent) {
+  const [editingId, setEditingIdState] = useState<string | null>(null)
+
+  function resetForm() {
+    setForm({ name: '', phone: '', service: '', estimated_value: '', origin: '', notes: '' })
+    setEditingIdState(null)
+    setShowForm(false)
+  }
+
+  function startEdit(lead: Lead) {
+    setEditingIdState(lead.id)
+    setForm({
+      name: lead.name,
+      phone: lead.phone ?? '',
+      service: lead.service ?? '',
+      estimated_value: lead.estimated_value ? String(lead.estimated_value) : '',
+      origin: lead.origin ?? '',
+      notes: lead.notes ?? '',
+    })
+    setSelectedLead(null)
+    setShowForm(true)
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const { data, error } = await supabase.from('leads').insert({
+    const payload = {
       name: form.name,
       phone: form.phone || null,
       service: form.service || null,
       estimated_value: form.estimated_value ? Number(form.estimated_value) : null,
       origin: form.origin || null,
       notes: form.notes || null,
-      funnel_stage: 'new',
-      position: 0,
-    }).select().single()
+    }
+    if (editingId) {
+      const { data, error } = await supabase.from('leads').update(payload).eq('id', editingId).select().single()
+      if (error) { toast.error('Erro ao atualizar'); return }
+      setLeads(prev => prev.map(l => l.id === editingId ? { ...l, ...data } : l))
+      toast.success('Lead atualizado!')
+    } else {
+      const { data, error } = await supabase.from('leads').insert({ ...payload, funnel_stage: 'new', position: 0 }).select().single()
+      if (error) { toast.error('Erro ao criar lead'); return }
+      setLeads(prev => [data, ...prev.map(l => l.funnel_stage === 'new' ? { ...l, position: (l.position ?? 0) + 1 } : l)])
+      toast.success('Lead criado com sucesso!')
+    }
+    resetForm()
+  }
 
-    if (error) { toast.error('Erro ao criar lead'); return }
-    setLeads(prev => [data, ...prev.map(l => l.funnel_stage === 'new' ? { ...l, position: (l.position ?? 0) + 1 } : l)])
-    setForm({ name: '', phone: '', service: '', estimated_value: '', origin: '', notes: '' })
-    setShowForm(false)
-    toast.success('Lead criado com sucesso!')
+  async function handleDelete(lead: Lead) {
+    if (!confirm(`Excluir o lead "${lead.name}"? Follow-ups vinculados também serão removidos.`)) return
+    const { error } = await supabase.from('leads').delete().eq('id', lead.id)
+    if (error) { toast.error('Erro ao excluir'); return }
+    setLeads(prev => prev.filter(l => l.id !== lead.id))
+    if (selectedLead?.id === lead.id) setSelectedLead(null)
+    toast.success('Lead excluído')
   }
 
   async function handleStageChange(lead: Lead, newStage: LeadStage) {
@@ -334,7 +369,7 @@ export default function LeadsClient({ initialLeads }: Props) {
         title="Leads"
         subtitle={`${leads.length} leads • ${leads.filter(l => l.funnel_stage === 'negotiating').length} em negociação`}
         action={
-          <Button onClick={() => setShowForm(true)}>
+          <Button onClick={() => { setEditingIdState(null); setForm({ name: '', phone: '', service: '', estimated_value: '', origin: '', notes: '' }); setShowForm(true) }}>
             <Plus size={16} /> Novo Lead
           </Button>
         }
@@ -412,17 +447,17 @@ export default function LeadsClient({ initialLeads }: Props) {
         </DragOverlay>
       </DndContext>
 
-      {/* Modal: Novo Lead */}
+      {/* Modal: Novo / Editar Lead */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-lg font-semibold">Novo Lead</h2>
-              <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600">
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-lg">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-neutral-800">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-neutral-100">{editingId ? 'Editar Lead' : 'Novo Lead'}</h2>
+              <button onClick={resetForm} className="text-gray-400 hover:text-gray-600">
                 <X size={20} />
               </button>
             </div>
-            <form onSubmit={handleCreate} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <Input label="Nome *" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} required />
               <div className="grid grid-cols-2 gap-4">
                 <Input label="Telefone" value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} placeholder="(46) 99999-0000" />
@@ -434,8 +469,8 @@ export default function LeadsClient({ initialLeads }: Props) {
               </div>
               <Textarea label="Observações" value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
               <div className="flex gap-3 pt-2">
-                <Button type="button" variant="secondary" onClick={() => setShowForm(false)} className="flex-1">Cancelar</Button>
-                <Button type="submit" className="flex-1">Criar Lead</Button>
+                <Button type="button" variant="secondary" onClick={resetForm} className="flex-1">Cancelar</Button>
+                <Button type="submit" className="flex-1">{editingId ? 'Salvar alterações' : 'Criar Lead'}</Button>
               </div>
             </form>
           </div>
@@ -522,6 +557,15 @@ export default function LeadsClient({ initialLeads }: Props) {
                   <ChevronRight size={16} /> Converter em Venda
                 </Button>
               )}
+
+              <div className="flex gap-2 pt-3 border-t border-gray-100 dark:border-neutral-800">
+                <Button size="sm" variant="secondary" onClick={() => startEdit(selectedLead)} className="flex-1">
+                  <Pencil size={14}/> Editar
+                </Button>
+                <Button size="sm" variant="danger" onClick={() => handleDelete(selectedLead)} className="flex-1">
+                  <Trash2 size={14}/> Excluir
+                </Button>
+              </div>
             </div>
           </div>
         </div>

@@ -23,7 +23,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Production, ProductionStatus, PRODUCTION_STATUS_LABELS } from '@/types'
 import { PageHeader, KpiCard } from '@/components/ui'
 import { formatDate, daysRemaining, cn } from '@/lib/utils'
-import { Clapperboard, Clock, CheckCircle, MoveRight, GripVertical } from 'lucide-react'
+import { Clapperboard, Clock, CheckCircle, MoveRight, GripVertical, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const COLUMNS: ProductionStatus[] = ['queue', 'in_progress', 'done']
@@ -67,10 +67,12 @@ function SortableProductionCard({
   prod,
   col,
   onMove,
+  onDelete,
 }: {
   prod: Production
   col: ProductionStatus
   onMove: (p: Production, status: ProductionStatus) => void
+  onDelete: (p: Production) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: prod.id,
@@ -86,7 +88,7 @@ function SortableProductionCard({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'bg-white rounded-xl p-3 shadow-sm border-t-4',
+        'bg-white dark:bg-neutral-900 rounded-xl p-3 shadow-sm border-t-4 transition-shadow group',
         COL_COLORS[col],
       )}
     >
@@ -94,15 +96,24 @@ function SortableProductionCard({
         <div className="flex-1 min-w-0">
           <ProductionCardBody prod={prod} />
         </div>
-        <button
-          {...attributes}
-          {...listeners}
-          aria-label="Arrastar"
-          className="text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing touch-none"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <GripVertical size={16} />
-        </button>
+        <div className="flex items-center gap-0.5 shrink-0">
+          <button
+            onClick={() => onDelete(prod)}
+            className="p-1 rounded-lg text-gray-300 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
+            title="Excluir"
+          >
+            <Trash2 size={14} />
+          </button>
+          <button
+            {...attributes}
+            {...listeners}
+            aria-label="Arrastar"
+            className="p-1 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing touch-none"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <GripVertical size={16} />
+          </button>
+        </div>
       </div>
       <div className="flex gap-2 mt-3">
         {col === 'queue' && (
@@ -204,6 +215,14 @@ export default function ProductionClient({ initialProductions }: { initialProduc
       updates.map(({ id, update }) => supabase.from('productions').update(update).eq('id', id))
     )
     if (results.some(r => r.error)) toast.error('Erro ao salvar posições')
+  }
+
+  async function handleDelete(prod: Production) {
+    if (!confirm(`Excluir esta produção?`)) return
+    const { error } = await supabase.from('productions').delete().eq('id', prod.id)
+    if (error) { toast.error('Erro ao excluir'); return }
+    setProductions(prev => prev.filter(p => p.id !== prod.id))
+    toast.success('Produção excluída')
   }
 
   async function moveCard(prod: Production, newStatus: ProductionStatus) {
@@ -332,7 +351,7 @@ export default function ProductionClient({ initialProductions }: { initialProduc
                   </div>
                 )}
                 {byStatus[col].map(prod => (
-                  <SortableProductionCard key={prod.id} prod={prod} col={col} onMove={moveCard} />
+                  <SortableProductionCard key={prod.id} prod={prod} col={col} onMove={moveCard} onDelete={handleDelete} />
                 ))}
               </SortableContext>
             </DroppableColumn>
