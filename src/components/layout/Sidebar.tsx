@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 import { Logo } from '@/components/logo'
 import {
   LayoutDashboard, Users, UserPlus, ShoppingBag, Package,
-  Clapperboard, DollarSign, Star, Bell, LogOut, Sun, Moon,
+  Clapperboard, DollarSign, Star, Bell, LogOut, Sun, Moon, X,
 } from 'lucide-react'
 
 type NavItem = {
@@ -30,7 +30,15 @@ const NAV: NavItem[] = [
   { href: '/aftersales', label: 'Pós-Venda',  icon: Star,            group: 'ops' },
 ]
 
-export function Sidebar({ notifications: initialCount = 0 }: { notifications?: number }) {
+export function Sidebar({
+  notifications: initialCount = 0,
+  mobileOpen = false,
+  onClose,
+}: {
+  notifications?: number
+  mobileOpen?: boolean
+  onClose?: () => void
+}) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -69,6 +77,7 @@ export function Sidebar({ notifications: initialCount = 0 }: { notifications?: n
       <Link
         key={item.href}
         href={item.href}
+        onClick={onClose}
         className={cn(
           'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group',
           active
@@ -91,11 +100,29 @@ export function Sidebar({ notifications: initialCount = 0 }: { notifications?: n
   }
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 bg-white dark:bg-sidebar border-r border-gray-200 dark:border-transparent flex flex-col z-40 shadow-xl">
-      {/* Logo */}
-      <div className="px-5 py-6 border-b border-gray-100 dark:border-white/5">
-        <Logo bg="auto" height={36} priority />
-        <p className="text-gray-400 dark:text-slate-500 text-[10px] uppercase tracking-[0.2em] mt-2.5">CRM · ERP · BI</p>
+    <>
+    {/* Backdrop mobile */}
+    {mobileOpen && (
+      <div
+        onClick={onClose}
+        className="lg:hidden fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
+      />
+    )}
+    <aside className={cn(
+      'fixed left-0 top-0 h-screen w-64 bg-white dark:bg-sidebar border-r border-gray-200 dark:border-transparent flex flex-col z-50 shadow-xl transition-transform duration-300 lg:translate-x-0',
+      mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+    )}>
+      {/* Logo + close (mobile) */}
+      <div className="px-5 py-6 border-b border-gray-100 dark:border-white/5 flex items-start justify-between">
+        <div>
+          <Logo bg="auto" height={36} priority />
+          <p className="text-gray-400 dark:text-slate-500 text-[10px] uppercase tracking-[0.2em] mt-2.5">CRM · ERP · BI</p>
+        </div>
+        {onClose && (
+          <button onClick={onClose} className="lg:hidden p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5">
+            <X size={18} />
+          </button>
+        )}
       </div>
 
       {/* Nav */}
@@ -113,6 +140,7 @@ export function Sidebar({ notifications: initialCount = 0 }: { notifications?: n
       <div className="p-3 border-t border-gray-100 dark:border-white/5 space-y-1">
         <Link
           href="/notifications"
+          onClick={onClose}
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-700 dark:text-slate-300 hover:bg-orange-50 dark:hover:bg-orange-500/10 hover:text-orange-600 dark:hover:text-orange-400 transition-all duration-200 group"
         >
           <Bell size={18} className="text-gray-400 dark:text-slate-400 group-hover:text-orange-500 dark:group-hover:text-orange-400 transition-colors duration-200" />
@@ -147,5 +175,6 @@ export function Sidebar({ notifications: initialCount = 0 }: { notifications?: n
         </button>
       </div>
     </aside>
+    </>
   )
 }
