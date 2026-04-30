@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Client, CreateClientForm } from '@/types'
@@ -155,9 +156,9 @@ export default function ClientsClient({ initialClients }: { initialClients: Clie
                       </div>
                     </div>
                     <div className="mt-3">
-                      <a href={`/clients/${client.id}`} onClick={(e)=>e.stopPropagation()} className="inline-flex items-center gap-1 text-xs font-medium text-orange-600 hover:text-orange-700">
+                      <Link href={`/clients/${client.id}`} onClick={(e)=>e.stopPropagation()} className="inline-flex items-center gap-1 text-xs font-medium text-orange-600 hover:text-orange-700 dark:hover:text-orange-400">
                         Ver detalhes completos →
-                      </a>
+                      </Link>
                     </div>
                   </div>
                 )}
