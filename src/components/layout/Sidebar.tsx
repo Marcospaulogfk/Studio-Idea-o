@@ -109,7 +109,7 @@ export function Sidebar({
       />
     )}
     <aside className={cn(
-      'fixed left-0 top-0 h-screen w-64 bg-white dark:bg-sidebar border-r border-gray-200 dark:border-transparent flex flex-col z-50 shadow-xl transition-transform duration-300 lg:translate-x-0',
+      'fixed left-0 top-0 h-screen w-64 bg-white dark:bg-sidebar border-r border-gray-200 dark:border-neutral-900 flex flex-col z-50 shadow-xl transition-transform duration-300 lg:translate-x-0',
       mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
     )}>
       {/* Logo + close (mobile) */}

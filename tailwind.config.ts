@@ -29,8 +29,8 @@ const config: Config = {
           dark:    '#1E293B',  // cards (dark)
         },
         sidebar: {
-          DEFAULT: '#1C2333',
-          hover:   '#262E42',
+          DEFAULT: '#000000',  // pure black (modo escuro)
+          hover:   '#0A0A0A',
         },
       },
       fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
