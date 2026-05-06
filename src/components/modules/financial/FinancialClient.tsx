@@ -1,11 +1,13 @@
 'use client'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Financial, FinancialType } from '@/types'
-import { Button, Badge, Card, Input, Select, PageHeader, KpiCard } from '@/components/ui'
+import { Button, Badge, Card, Input, MoneyInput, Select, PageHeader, KpiCard } from '@/components/ui'
+import { DateRangeFilter, inRange, type DateRange, type PresetId } from '@/components/ui/date-range'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
-import { Plus, X, TrendingUp, TrendingDown, ArrowUpDown, Pencil, Trash2 } from 'lucide-react'
+import { Plus, X, TrendingUp, TrendingDown, ArrowUpDown, Pencil, Trash2, Download } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { downloadCsv } from '@/lib/csv'
 
 const CAT_OPTIONS = [
   {value:'personal',label:'Pessoal'},{value:'tools',label:'Ferramentas'},
@@ -19,12 +21,35 @@ export default function FinancialClient({ initialFinancials }: { initialFinancia
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [filter, setFilter] = useState<FinancialType|'all'>('all')
+  const [datePreset, setDatePreset] = useState<PresetId>('all')
+  const [dateRange, setDateRange] = useState<DateRange>({ from: null, to: null })
   const [form, setForm] = useState({ type:'payable' as FinancialType, description:'', amount:'', category:'other', due_date:'' })
 
-  const filtered = filter === 'all' ? financials : financials.filter(f => f.type === filter)
-  const totalReceivable = financials.filter(f=>f.type==='receivable'&&f.status!=='paid').reduce((s,f)=>s+f.amount,0)
-  const totalPayable = financials.filter(f=>f.type==='payable'&&f.status!=='paid').reduce((s,f)=>s+f.amount,0)
+  const filtered = useMemo(() => financials.filter(f => {
+    if (filter !== 'all' && f.type !== filter) return false
+    if (datePreset !== 'all') {
+      const refDate = f.due_date ?? f.created_at
+      if (!inRange(refDate, dateRange)) return false
+    }
+    return true
+  }), [financials, filter, datePreset, dateRange])
+
+  const totalReceivable = filtered.filter(f=>f.type==='receivable'&&f.status!=='paid').reduce((s,f)=>s+f.amount,0)
+  const totalPayable = filtered.filter(f=>f.type==='payable'&&f.status!=='paid').reduce((s,f)=>s+f.amount,0)
   const balance = totalReceivable - totalPayable
+
+  function handleExport() {
+    if (filtered.length === 0) { toast('Sem lançamentos no filtro atual'); return }
+    downloadCsv(`financeiro-${new Date().toISOString().slice(0,10)}`, filtered, [
+      { header: 'Descrição',     accessor: f => f.description },
+      { header: 'Tipo',          accessor: f => f.type === 'receivable' ? 'Entrada' : 'Saída' },
+      { header: 'Categoria',     accessor: f => f.category ?? '' },
+      { header: 'Valor (BRL)',   accessor: f => f.amount.toFixed(2).replace('.', ',') },
+      { header: 'Vencimento',    accessor: f => f.due_date ? formatDate(f.due_date) : '' },
+      { header: 'Status',        accessor: f => f.status === 'paid' ? 'Pago' : f.status === 'overdue' ? 'Vencido' : 'Pendente' },
+      { header: 'Pago em',       accessor: f => f.paid_at ? formatDate(f.paid_at) : '' },
+    ])
+  }
 
   function resetForm() {
     setForm({ type:'payable', description:'', amount:'', category:'other', due_date:'' })
@@ -84,8 +109,13 @@ export default function FinancialClient({ initialFinancials }: { initialFinancia
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Financeiro" subtitle="Controle de caixa — entradas e saídas"
-        action={<Button onClick={()=>{ setEditingId(null); setShowForm(true) }}><Plus size={16}/> Novo Lançamento</Button>}/>
+      <PageHeader title="Financeiro" subtitle={`${filtered.length} de ${financials.length} lançamentos`}
+        action={
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={handleExport}><Download size={14}/> Exportar</Button>
+            <Button onClick={()=>{ setEditingId(null); setShowForm(true) }}><Plus size={16}/> Novo Lançamento</Button>
+          </div>
+        }/>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <KpiCard title="A Receber" value={formatCurrency(totalReceivable)} icon={<TrendingUp size={20}/>} color="green"/>
@@ -93,7 +123,12 @@ export default function FinancialClient({ initialFinancials }: { initialFinancia
         <KpiCard title="Saldo Projetado" value={formatCurrency(balance)} icon={<ArrowUpDown size={20}/>} color={balance>=0?'blue':'red'}/>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap items-center">
+        <DateRangeFilter
+          preset={datePreset}
+          range={dateRange}
+          onChange={(p, r) => { setDatePreset(p); setDateRange(r) }}
+        />
         {(['all','receivable','payable'] as const).map(t=>(
           <button key={t} onClick={()=>setFilter(t)}
             className={cn('px-3 py-1.5 rounded-xl text-xs font-medium border transition-all',
@@ -161,7 +196,7 @@ export default function FinancialClient({ initialFinancials }: { initialFinancia
               <Select label="Tipo" options={[{value:'receivable',label:'A Receber (Entrada)'},{value:'payable',label:'A Pagar (Saída)'}]} value={form.type} onChange={e=>setForm(p=>({...p,type:e.target.value as FinancialType}))}/>
               <Input label="Descrição *" value={form.description} onChange={e=>setForm(p=>({...p,description:e.target.value}))} required/>
               <div className="grid grid-cols-2 gap-4">
-                <Input label="Valor *" type="number" step="0.01" value={form.amount} onChange={e=>setForm(p=>({...p,amount:e.target.value}))} required/>
+                <MoneyInput label="Valor *" value={form.amount === '' ? '' : Number(form.amount)} onChange={n=>setForm(p=>({...p,amount:n ? String(n) : ''}))} required/>
                 <Input label="Vencimento" type="date" value={form.due_date} onChange={e=>setForm(p=>({...p,due_date:e.target.value}))}/>
               </div>
               <Select label="Categoria" options={CAT_OPTIONS} value={form.category} onChange={e=>setForm(p=>({...p,category:e.target.value}))}/>

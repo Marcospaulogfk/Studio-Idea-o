@@ -1,11 +1,13 @@
 'use client'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Sale, Client, PaymentStatus, PAYMENT_STATUS_LABELS, ORIGIN_LABELS, LeadOrigin, SERVICES } from '@/types'
-import { Button, Badge, Card, Input, Select, Textarea, PageHeader, KpiCard, EmptyState } from '@/components/ui'
+import { Button, Badge, Card, Input, MoneyInput, Select, Textarea, PageHeader, KpiCard, EmptyState } from '@/components/ui'
+import { DateRangeFilter, inRange, presetToRange, type DateRange, type PresetId } from '@/components/ui/date-range'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
-import { Plus, X, ShoppingBag, DollarSign, TrendingUp, Pencil, Trash2 } from 'lucide-react'
+import { Plus, X, ShoppingBag, DollarSign, TrendingUp, Pencil, Trash2, Download } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { downloadCsv } from '@/lib/csv'
 
 const PAYMENT_OPTIONS = Object.entries(PAYMENT_STATUS_LABELS).map(([v,l])=>({value:v,label:l}))
 const ORIGIN_OPTIONS = Object.entries(ORIGIN_LABELS).map(([v,l])=>({value:v,label:l}))
@@ -19,6 +21,8 @@ export default function SalesClient({ initialSales, clients }: { initialSales: S
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [filterStatus, setFilterStatus] = useState<PaymentStatus|'all'>('all')
+  const [datePreset, setDatePreset] = useState<PresetId>('all')
+  const [dateRange, setDateRange] = useState<DateRange>({ from: null, to: null })
   const [form, setForm] = useState({
     client_id: '', services: [] as string[], description: '',
     total_value: '', origin: '' as LeadOrigin|'',
@@ -26,10 +30,32 @@ export default function SalesClient({ initialSales, clients }: { initialSales: S
     paid_traffic: false, has_package: false, package_model: '10', package_arts_total: '10',
   })
 
-  const filtered = filterStatus === 'all' ? sales : sales.filter(s => s.payment_status === filterStatus)
-  const totalRevenue = sales.reduce((sum,s)=>sum+s.total_value,0)
-  const received = sales.filter(s=>s.payment_status==='100%').reduce((sum,s)=>sum+s.total_value,0)
-  const pending = sales.filter(s=>s.payment_status!=='100%').reduce((sum,s)=>sum+(s.payment_status==='50%'?s.total_value*0.5:s.total_value),0)
+  const filtered = useMemo(() => {
+    return sales.filter(s => {
+      if (filterStatus !== 'all' && s.payment_status !== filterStatus) return false
+      if (datePreset !== 'all' && !inRange(s.sold_at, dateRange)) return false
+      return true
+    })
+  }, [sales, filterStatus, datePreset, dateRange])
+
+  const totalRevenue = filtered.reduce((sum,s)=>sum+s.total_value,0)
+  const received = filtered.filter(s=>s.payment_status==='100%').reduce((sum,s)=>sum+s.total_value,0)
+  const pending = filtered.filter(s=>s.payment_status!=='100%').reduce((sum,s)=>sum+(s.payment_status==='50%'?s.total_value*0.5:s.total_value),0)
+
+  function handleExport() {
+    if (filtered.length === 0) { toast('Sem vendas no filtro atual'); return }
+    downloadCsv(`vendas-${new Date().toISOString().slice(0,10)}`, filtered, [
+      { header: 'Data',         accessor: s => formatDate(s.sold_at) },
+      { header: 'Cliente',      accessor: s => (s as any).client?.name ?? '' },
+      { header: 'Serviços',     accessor: s => (s.services ?? []).join(' | ') },
+      { header: 'Valor (BRL)',  accessor: s => s.total_value.toFixed(2).replace('.', ',') },
+      { header: 'Pagamento',    accessor: s => PAYMENT_STATUS_LABELS[s.payment_status] },
+      { header: 'Origem',       accessor: s => s.origin ? ORIGIN_LABELS[s.origin] : '' },
+      { header: 'Tipo cliente', accessor: s => s.client_type === 'returning' ? 'Recorrente' : 'Novo' },
+      { header: 'Tráfego pago', accessor: s => s.paid_traffic ? 'Sim' : 'Não' },
+      { header: 'Descrição',    accessor: s => s.description ?? '' },
+    ])
+  }
 
   const clientOptions = clients.map(c=>({value:c.id,label:c.name}))
 
@@ -118,8 +144,13 @@ export default function SalesClient({ initialSales, clients }: { initialSales: S
     <div className="space-y-6">
       <PageHeader
         title="Vendas"
-        subtitle={`${sales.length} vendas registradas`}
-        action={<Button onClick={()=>{ setEditingId(null); setForm({ client_id:'',services:[],description:'',total_value:'',origin:'',payment_status:'pending',client_type:'new',paid_traffic:false,has_package:false,package_model:'10',package_arts_total:'10' }); setShowForm(true) }}><Plus size={16}/> Nova Venda</Button>}
+        subtitle={`${filtered.length} de ${sales.length} vendas`}
+        action={
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={handleExport}><Download size={14}/> Exportar</Button>
+            <Button onClick={()=>{ setEditingId(null); setForm({ client_id:'',services:[],description:'',total_value:'',origin:'',payment_status:'pending',client_type:'new',paid_traffic:false,has_package:false,package_model:'10',package_arts_total:'10' }); setShowForm(true) }}><Plus size={16}/> Nova Venda</Button>
+          </div>
+        }
       />
 
       <div className="grid grid-cols-3 gap-4">
@@ -129,7 +160,12 @@ export default function SalesClient({ initialSales, clients }: { initialSales: S
       </div>
 
       {/* Filtros */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap items-center">
+        <DateRangeFilter
+          preset={datePreset}
+          range={dateRange}
+          onChange={(p, r) => { setDatePreset(p); setDateRange(r) }}
+        />
         {(['all','pending','50%','100%'] as const).map(s=>(
           <button key={s} onClick={()=>setFilterStatus(s)}
             className={cn('px-3 py-1.5 rounded-xl text-xs font-medium border transition-all',
@@ -226,7 +262,7 @@ export default function SalesClient({ initialSales, clients }: { initialSales: S
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <Input label="Valor Total *" type="number" step="0.01" value={form.total_value} onChange={e=>setForm(p=>({...p,total_value:e.target.value}))} required placeholder="0,00"/>
+                <MoneyInput label="Valor Total *" value={form.total_value === '' ? '' : Number(form.total_value)} onChange={n=>setForm(p=>({...p,total_value:n ? String(n) : ''}))} required />
                 <Select label="Status Pagamento" options={PAYMENT_OPTIONS} value={form.payment_status} onChange={e=>setForm(p=>({...p,payment_status:e.target.value as PaymentStatus}))}/>
               </div>
 

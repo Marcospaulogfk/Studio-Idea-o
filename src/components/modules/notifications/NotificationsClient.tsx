@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Notification, NotificationType } from '@/types'
 import { Card, PageHeader, KpiCard, Button, EmptyState, Badge } from '@/components/ui'
+import { DateRangeFilter, inRange, type DateRange, type PresetId } from '@/components/ui/date-range'
 import { formatRelative, cn } from '@/lib/utils'
 import {
   Bell, Phone, Package, DollarSign, CheckCircle, AlertTriangle,
@@ -54,9 +55,15 @@ function bucketByDate(notifications: Notification[]) {
 export default function NotificationsClient({ initial }: Props) {
   const supabase = createClient()
   const [notifications, setNotifications] = useState<Notification[]>(initial)
+  const [datePreset, setDatePreset] = useState<PresetId>('all')
+  const [dateRange, setDateRange] = useState<DateRange>({ from: null, to: null })
 
-  const unread = useMemo(() => notifications.filter(n => !n.read), [notifications])
-  const buckets = useMemo(() => bucketByDate(notifications), [notifications])
+  const filtered = useMemo(
+    () => notifications.filter(n => datePreset === 'all' || inRange(n.created_at, dateRange)),
+    [notifications, datePreset, dateRange],
+  )
+  const unread = useMemo(() => filtered.filter(n => !n.read), [filtered])
+  const buckets = useMemo(() => bucketByDate(filtered), [filtered])
 
   async function markAsRead(id: string) {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
@@ -164,7 +171,7 @@ export default function NotificationsClient({ initial }: Props) {
     <div className="space-y-6">
       <PageHeader
         title="Notificações"
-        subtitle={`${unread.length} não lida${unread.length !== 1 ? 's' : ''}`}
+        subtitle={`${filtered.length} de ${notifications.length} · ${unread.length} não lida${unread.length !== 1 ? 's' : ''}`}
         action={
           <div className="flex gap-2">
             {unread.length > 0 && (
@@ -179,14 +186,22 @@ export default function NotificationsClient({ initial }: Props) {
         }
       />
 
+      <div className="flex">
+        <DateRangeFilter
+          preset={datePreset}
+          range={dateRange}
+          onChange={(p, r) => { setDatePreset(p); setDateRange(r) }}
+        />
+      </div>
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard title="Total" value={String(notifications.length)} icon={<Bell size={20}/>} color="orange" />
+        <KpiCard title="Total" value={String(filtered.length)} icon={<Bell size={20}/>} color="orange" />
         <KpiCard title="Não Lidas" value={String(unread.length)} icon={<AlertTriangle size={20}/>} color="red" />
         <KpiCard title="Pacotes Vencendo"
-          value={String(notifications.filter(n => n.type.startsWith('package_expiring')).length)}
+          value={String(filtered.filter(n => n.type.startsWith('package_expiring')).length)}
           icon={<Package size={20}/>} color="yellow" />
         <KpiCard title="Follow-ups"
-          value={String(notifications.filter(n => n.type === 'followup_overdue').length)}
+          value={String(filtered.filter(n => n.type === 'followup_overdue').length)}
           icon={<Phone size={20}/>} color="blue" />
       </div>
 

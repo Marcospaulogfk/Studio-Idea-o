@@ -1,8 +1,9 @@
 'use client'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Package, PackageStatus, PackageModel } from '@/types'
 import { Badge, Button, Card, Input, Select, PageHeader, KpiCard, ProgressBar, EmptyState } from '@/components/ui'
+import { DateRangeFilter, inRange, type DateRange, type PresetId } from '@/components/ui/date-range'
 import { formatDate, daysRemaining, getPackageAlertLevel, cn } from '@/lib/utils'
 import { Package as PackageIcon, AlertTriangle, CheckCircle, Clock, Pencil, Trash2, X } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -24,12 +25,19 @@ export default function PackagesClient({ initialPackages }: { initialPackages: P
   const supabase = createClient()
   const [packages, setPackages] = useState<Package[]>(initialPackages)
   const [filter, setFilter] = useState<PackageStatus|'all'>('all')
+  const [datePreset, setDatePreset] = useState<PresetId>('all')
+  const [dateRange, setDateRange] = useState<DateRange>({ from: null, to: null })
   const [editing, setEditing] = useState<Package | null>(null)
   const [form, setForm] = useState({ model: 'custom' as PackageModel, arts_total: '0', arts_used: '0', expires_at: '', status: 'active' as PackageStatus })
 
-  const filtered = filter === 'all' ? packages : packages.filter(p => p.status === filter)
-  const active = packages.filter(p => p.status === 'active').length
-  const expiring = packages.filter(p => p.status === 'active' && daysRemaining(p.expires_at) <= 15).length
+  const filtered = useMemo(() => packages.filter(p => {
+    if (filter !== 'all' && p.status !== filter) return false
+    if (datePreset !== 'all' && !inRange(p.activated_at, dateRange)) return false
+    return true
+  }), [packages, filter, datePreset, dateRange])
+
+  const active = filtered.filter(p => p.status === 'active').length
+  const expiring = filtered.filter(p => p.status === 'active' && daysRemaining(p.expires_at) <= 15).length
 
   function startEdit(pkg: Package) {
     setEditing(pkg)
@@ -78,22 +86,27 @@ export default function PackagesClient({ initialPackages }: { initialPackages: P
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Pacotes" subtitle={`${active} ativos${expiring > 0 ? ` · ⚠️ ${expiring} vencendo` : ''}`} />
+      <PageHeader title="Pacotes" subtitle={`${filtered.length} de ${packages.length} · ${active} ativo${active!==1?'s':''}${expiring > 0 ? ` · ⚠️ ${expiring} vencendo` : ''}`} />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <KpiCard title="Pacotes Ativos" value={String(active)} icon={<PackageIcon size={20}/>} color="blue"/>
         <KpiCard title="Vencendo em 15 dias" value={String(expiring)} icon={<AlertTriangle size={20}/>} color={expiring>0?'yellow':'green'}/>
-        <KpiCard title="Finalizados" value={String(packages.filter(p=>p.status==='inactive').length)} icon={<CheckCircle size={20}/>} color="green"/>
+        <KpiCard title="Finalizados" value={String(filtered.filter(p=>p.status==='inactive').length)} icon={<CheckCircle size={20}/>} color="green"/>
       </div>
 
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-2 flex-wrap items-center">
+        <DateRangeFilter
+          preset={datePreset}
+          range={dateRange}
+          onChange={(p, r) => { setDatePreset(p); setDateRange(r) }}
+        />
         {(['all','active','inactive','expired'] as const).map(s=>(
           <button key={s} onClick={()=>setFilter(s)}
             className={cn('px-3 py-1.5 rounded-xl text-xs font-medium border transition-all',
               filter===s ? 'bg-orange-500 text-white border-orange-500'
-                : 'bg-white dark:bg-neutral-900 text-gray-600 dark:text-neutral-300 border-gray-200 dark:border-neutral-800 hover:border-orange-300')}>
+                : 'bg-white dark:bg-neutral-900 text-gray-600 dark:text-neutral-300 border-gray-200 dark:border-neutral-800 hover:border-orange-300 dark:hover:border-orange-500/50')}>
             {s==='all'?'Todos':s==='active'?'Ativos':s==='inactive'?'Finalizados':'Expirados'}
-            <span className="ml-1.5 opacity-70">{s==='all'?packages.length:packages.filter(p=>p.status===s).length}</span>
+            <span className="ml-1.5 opacity-70">{s==='all'?filtered.length:filtered.filter(p=>p.status===s).length}</span>
           </button>
         ))}
       </div>

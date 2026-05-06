@@ -22,10 +22,12 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { createClient } from '@/lib/supabase/client'
 import { Lead, LeadStage, LEAD_STAGE_LABELS, ORIGIN_LABELS, LeadOrigin, SERVICES } from '@/types'
-import { Button, Badge, Input, Select, Textarea, PageHeader } from '@/components/ui'
-import { formatCurrency, formatRelative, getFollowupUrgency, cn } from '@/lib/utils'
-import { Plus, Phone, Clock, ChevronRight, X, CheckCircle, GripVertical, Pencil, Trash2 } from 'lucide-react'
+import { Button, Badge, Input, PhoneInput, MoneyInput, Select, Textarea, PageHeader } from '@/components/ui'
+import { DateRangeFilter, inRange, type DateRange, type PresetId } from '@/components/ui/date-range'
+import { formatCurrency, formatDate, formatRelative, getFollowupUrgency, cn } from '@/lib/utils'
+import { Plus, Phone, Clock, ChevronRight, X, CheckCircle, GripVertical, Pencil, Trash2, Download } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { downloadCsv } from '@/lib/csv'
 
 const STAGES: LeadStage[] = ['new', 'negotiating', 'closed', 'disqualified', 'future']
 
@@ -165,6 +167,8 @@ export default function LeadsClient({ initialLeads }: Props) {
   const [filterStage, setFilterStage] = useState<LeadStage | 'all'>('all')
   const [activeId, setActiveId] = useState<string | null>(null)
   const [overId, setOverId] = useState<string | null>(null)
+  const [datePreset, setDatePreset] = useState<PresetId>('all')
+  const [dateRange, setDateRange] = useState<DateRange>({ from: null, to: null })
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -175,14 +179,19 @@ export default function LeadsClient({ initialLeads }: Props) {
     origin: '' as LeadOrigin | '', notes: ''
   })
 
+  const visibleLeads = useMemo(
+    () => leads.filter(l => datePreset === 'all' || inRange(l.created_at, dateRange)),
+    [leads, datePreset, dateRange],
+  )
+
   const byStage = useMemo(() => {
     return STAGES.reduce((acc, stage) => {
-      acc[stage] = leads
+      acc[stage] = visibleLeads
         .filter(l => l.funnel_stage === stage)
         .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
       return acc
     }, {} as Record<LeadStage, Lead[]>)
-  }, [leads])
+  }, [visibleLeads])
 
   const findStage = (id: string): LeadStage | null => {
     if ((STAGES as string[]).includes(id)) return id as LeadStage
@@ -361,21 +370,44 @@ export default function LeadsClient({ initialLeads }: Props) {
     setOverId(null)
   }
 
+  function handleExport() {
+    if (visibleLeads.length === 0) { toast('Sem leads no filtro atual'); return }
+    downloadCsv(`leads-${new Date().toISOString().slice(0,10)}`, visibleLeads, [
+      { header: 'Nome',          accessor: l => l.name },
+      { header: 'Telefone',      accessor: l => l.phone ?? '' },
+      { header: 'Estágio',       accessor: l => LEAD_STAGE_LABELS[l.funnel_stage] },
+      { header: 'Serviço',       accessor: l => l.service ?? '' },
+      { header: 'Valor estimado',accessor: l => l.estimated_value ? l.estimated_value.toFixed(2).replace('.', ',') : '' },
+      { header: 'Origem',        accessor: l => l.origin ? ORIGIN_LABELS[l.origin as LeadOrigin] : '' },
+      { header: 'Último contato',accessor: l => l.last_contact ? formatDate(l.last_contact) : '' },
+      { header: 'Criado em',     accessor: l => formatDate(l.created_at) },
+      { header: 'Notas',         accessor: l => l.notes ?? '' },
+    ])
+  }
+
   const activeLead = activeId ? leads.find(l => l.id === activeId) : null
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Leads"
-        subtitle={`${leads.length} leads • ${leads.filter(l => l.funnel_stage === 'negotiating').length} em negociação`}
+        subtitle={`${visibleLeads.length} de ${leads.length} • ${visibleLeads.filter(l => l.funnel_stage === 'negotiating').length} em negociação`}
         action={
-          <Button onClick={() => { setEditingIdState(null); setForm({ name: '', phone: '', service: '', estimated_value: '', origin: '', notes: '' }); setShowForm(true) }}>
-            <Plus size={16} /> Novo Lead
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={handleExport}><Download size={14}/> Exportar</Button>
+            <Button onClick={() => { setEditingIdState(null); setForm({ name: '', phone: '', service: '', estimated_value: '', origin: '', notes: '' }); setShowForm(true) }}>
+              <Plus size={16} /> Novo Lead
+            </Button>
+          </div>
         }
       />
 
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-2 flex-wrap items-center">
+        <DateRangeFilter
+          preset={datePreset}
+          range={dateRange}
+          onChange={(p, r) => { setDatePreset(p); setDateRange(r) }}
+        />
         {([['all', 'Todos'], ...STAGES.map(s => [s, LEAD_STAGE_LABELS[s]])] as [string, string][]).map(([stage, label]) => (
           <button
             key={stage}
@@ -390,8 +422,8 @@ export default function LeadsClient({ initialLeads }: Props) {
             {label}
             <span className="ml-1.5 opacity-70">
               {stage === 'all'
-                ? leads.length
-                : leads.filter(l => l.funnel_stage === stage).length}
+                ? visibleLeads.length
+                : visibleLeads.filter(l => l.funnel_stage === stage).length}
             </span>
           </button>
         ))}
@@ -460,8 +492,8 @@ export default function LeadsClient({ initialLeads }: Props) {
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <Input label="Nome *" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} required />
               <div className="grid grid-cols-2 gap-4">
-                <Input label="Telefone" value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} placeholder="(46) 99999-0000" />
-                <Input label="Valor Estimado" type="number" value={form.estimated_value} onChange={e => setForm(p => ({ ...p, estimated_value: e.target.value }))} placeholder="0,00" />
+                <PhoneInput label="Telefone" value={form.phone} onChange={v => setForm(p => ({ ...p, phone: v }))} />
+                <MoneyInput label="Valor Estimado" value={form.estimated_value === '' ? '' : Number(form.estimated_value)} onChange={n => setForm(p => ({ ...p, estimated_value: n ? String(n) : '' }))} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <Select label="Serviço de Interesse" options={SERVICE_OPTIONS} value={form.service} onChange={e => setForm(p => ({ ...p, service: e.target.value }))} />

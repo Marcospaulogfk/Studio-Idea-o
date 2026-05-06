@@ -7,10 +7,11 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { Logo } from '@/components/logo'
+import toast from 'react-hot-toast'
 import {
   LayoutDashboard, Users, UserPlus, ShoppingBag, Package,
   Clapperboard, DollarSign, Star, Bell, LogOut, Sun, Moon, X,
-  ShieldCheck,
+  ShieldCheck, UserCircle2, History,
 } from 'lucide-react'
 
 type NavGroup = 'main' | 'ops' | 'admin'
@@ -30,9 +31,10 @@ const NAV: NavItem[] = [
   { href: '/sales',      label: 'Vendas',     icon: ShoppingBag,     group: 'main' },
   { href: '/packages',   label: 'Pacotes',    icon: Package,         group: 'ops' },
   { href: '/production', label: 'Produção',   icon: Clapperboard,    group: 'ops' },
-  { href: '/financial',  label: 'Financeiro', icon: DollarSign,      group: 'ops' },
+  { href: '/financial',  label: 'Financeiro', icon: DollarSign,      group: 'ops',   roles: ['admin', 'manager'] },
   { href: '/aftersales', label: 'Pós-Venda',  icon: Star,            group: 'ops' },
   { href: '/team',       label: 'Equipe',     icon: ShieldCheck,     group: 'admin', roles: ['admin', 'manager'] },
+  { href: '/audit',      label: 'Auditoria',  icon: History,         group: 'admin', roles: ['admin'] },
 ]
 
 export function Sidebar({
@@ -51,23 +53,27 @@ export function Sidebar({
   const [mounted, setMounted] = useState(false)
   const [unreadCount, setUnreadCount] = useState<number>(initialCount)
   const [role, setRole] = useState<'admin' | 'manager' | 'operator' | null>(null)
+  const [profile, setProfile] = useState<{ name: string; email: string } | null>(null)
 
   useEffect(() => setMounted(true), [])
 
-  // Busca o cargo do usuário logado para filtrar itens restritos do menu
+  // Busca o perfil do usuário logado para filtrar itens restritos do menu
+  // e exibir nome/avatar no rodapé.
   useEffect(() => {
     let cancelled = false
-    async function fetchRole() {
+    async function fetchProfile() {
       try {
         const res = await fetch('/api/auth/me', { cache: 'no-store' })
         if (!res.ok) return
         const json = await res.json()
-        if (!cancelled && json?.user?.role) setRole(json.user.role)
+        if (cancelled) return
+        if (json?.user?.role) setRole(json.user.role)
+        if (json?.user) setProfile({ name: json.user.name, email: json.user.email })
       } catch {}
     }
-    fetchRole()
+    fetchProfile()
     return () => { cancelled = true }
-  }, [])
+  }, [pathname])
 
   // Busca contagem de não lidas + atualiza quando o user muda de rota
   useEffect(() => {
@@ -82,6 +88,26 @@ export function Sidebar({
     fetchCount()
     return () => { cancelled = true }
   }, [pathname, supabase])
+
+  // Realtime: novas notificações disparam toast e incrementam o badge
+  useEffect(() => {
+    const channel = supabase
+      .channel('notifications-stream')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload: any) => {
+        setUnreadCount(c => c + 1)
+        const title = payload?.new?.title ?? 'Nova notificação'
+        const message = payload?.new?.message ?? ''
+        toast(`${title}${message ? `\n${message}` : ''}`, { icon: '🔔', duration: 5000 })
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications' }, (payload: any) => {
+        // Se foi marcada como lida, decrementa
+        if (payload?.old?.read === false && payload?.new?.read === true) {
+          setUnreadCount(c => Math.max(0, c - 1))
+        }
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [supabase])
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -169,6 +195,27 @@ export function Sidebar({
 
       {/* Footer */}
       <div className="p-3 border-t border-gray-100 dark:border-white/5 space-y-1">
+        {profile && (
+          <Link
+            href="/profile"
+            onClick={onClose}
+            className={cn(
+              'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 group mb-1',
+              pathname.startsWith('/profile')
+                ? 'bg-orange-500/10 text-orange-700 dark:text-orange-300'
+                : 'text-gray-700 dark:text-slate-300 hover:bg-orange-50 dark:hover:bg-orange-500/10',
+            )}
+          >
+            <div className="w-7 h-7 rounded-full bg-orange-500 text-white flex items-center justify-center text-xs font-bold shrink-0">
+              {profile.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() || <UserCircle2 size={16} />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold truncate">{profile.name}</p>
+              <p className="text-[10px] text-gray-400 dark:text-slate-500 truncate">{profile.email}</p>
+            </div>
+          </Link>
+        )}
+
         <Link
           href="/notifications"
           onClick={onClose}

@@ -1,12 +1,14 @@
 'use client'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Client, CreateClientForm } from '@/types'
-import { Button, Badge, Card, Input, PageHeader, EmptyState, KpiCard } from '@/components/ui'
-import { formatCurrency, formatDate, cn } from '@/lib/utils'
-import { Plus, X, Users, TrendingUp, Search, ChevronDown, ChevronUp, Pencil, Trash2, Power } from 'lucide-react'
+import { Button, Badge, Card, Input, PhoneInput, DocInput, PageHeader, EmptyState, KpiCard } from '@/components/ui'
+import { DateRangeFilter, inRange, type DateRange, type PresetId } from '@/components/ui/date-range'
+import { formatCurrency, formatDate, cn, isValidDoc } from '@/lib/utils'
+import { Plus, X, Users, TrendingUp, Search, ChevronDown, ChevronUp, Pencil, Trash2, Power, Download } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { downloadCsv } from '@/lib/csv'
 
 export default function ClientsClient({ initialClients }: { initialClients: Client[] }) {
   const supabase = createClient()
@@ -15,16 +17,23 @@ export default function ClientsClient({ initialClients }: { initialClients: Clie
   const [search, setSearch] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [datePreset, setDatePreset] = useState<PresetId>('all')
+  const [dateRange, setDateRange] = useState<DateRange>({ from: null, to: null })
   const [form, setForm] = useState<CreateClientForm>({ name: '', phone: '', cpf_cnpj: '', address: '' })
 
-  const filtered = clients.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.phone?.includes(search) ||
-    c.cpf_cnpj?.includes(search)
-  )
+  const filtered = useMemo(() => clients.filter(c => {
+    if (datePreset !== 'all' && !inRange(c.created_at, dateRange)) return false
+    const q = search.toLowerCase()
+    if (!q) return true
+    return (
+      c.name.toLowerCase().includes(q) ||
+      (c.phone ?? '').includes(search) ||
+      (c.cpf_cnpj ?? '').includes(search)
+    )
+  }), [clients, search, datePreset, dateRange])
 
-  const totalLTV = clients.reduce((sum, c) => sum + (c.ltv ?? 0), 0)
-  const activeCount = clients.filter(c => c.status === 'active').length
+  const totalLTV = filtered.reduce((sum, c) => sum + (c.ltv ?? 0), 0)
+  const activeCount = filtered.filter(c => c.status === 'active').length
 
   function resetForm() {
     setForm({ name: '', phone: '', cpf_cnpj: '', address: '' })
@@ -41,6 +50,10 @@ export default function ClientsClient({ initialClients }: { initialClients: Clie
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (form.cpf_cnpj && !isValidDoc(form.cpf_cnpj)) {
+      toast.error('CPF/CNPJ inválido')
+      return
+    }
     const payload = {
       name: form.name,
       phone: form.phone || null,
@@ -70,6 +83,19 @@ export default function ClientsClient({ initialClients }: { initialClients: Clie
     toast.success(newStatus === 'active' ? 'Cliente reativado' : 'Cliente desativado')
   }
 
+  function handleExport() {
+    if (filtered.length === 0) { toast('Sem clientes no filtro atual'); return }
+    downloadCsv(`clientes-${new Date().toISOString().slice(0,10)}`, filtered, [
+      { header: 'Nome',         accessor: c => c.name },
+      { header: 'Telefone',     accessor: c => c.phone ?? '' },
+      { header: 'CPF/CNPJ',     accessor: c => c.cpf_cnpj ?? '' },
+      { header: 'Endereço',     accessor: c => c.address ?? '' },
+      { header: 'Status',       accessor: c => c.status === 'active' ? 'Ativo' : 'Inativo' },
+      { header: 'LTV (BRL)',    accessor: c => (c.ltv ?? 0).toFixed(2).replace('.', ',') },
+      { header: 'Cliente desde',accessor: c => formatDate(c.created_at) },
+    ])
+  }
+
   async function handleDelete(c: Client, e: React.MouseEvent) {
     e.stopPropagation()
     if (!confirm(`Excluir definitivamente "${c.name}"? Esta ação não pode ser desfeita.\n\n(Se houver vendas vinculadas, o sistema vai impedir e você pode usar "desativar" no lugar.)`)) return
@@ -83,8 +109,13 @@ export default function ClientsClient({ initialClients }: { initialClients: Clie
     <div className="space-y-6">
       <PageHeader
         title="Clientes"
-        subtitle={`${activeCount} ativos · Base total de ${clients.length}`}
-        action={<Button onClick={() => { setEditingId(null); setForm({ name: '', phone: '', cpf_cnpj: '', address: '' }); setShowForm(true) }}><Plus size={16} /> Novo Cliente</Button>}
+        subtitle={`${filtered.length} de ${clients.length} clientes · ${activeCount} ativos no filtro`}
+        action={
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={handleExport}><Download size={14}/> Exportar</Button>
+            <Button onClick={() => { setEditingId(null); setForm({ name: '', phone: '', cpf_cnpj: '', address: '' }); setShowForm(true) }}><Plus size={16} /> Novo Cliente</Button>
+          </div>
+        }
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -93,12 +124,19 @@ export default function ClientsClient({ initialClients }: { initialClients: Clie
         <KpiCard title="Clientes Ativos" value={String(activeCount)} icon={<Users size={20}/>} color="purple" />
       </div>
 
-      <div className="relative">
-        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-neutral-500" />
-        <input
-          value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Buscar por nome, telefone ou CNPJ..."
-          className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-neutral-500" />
+          <input
+            value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar por nome, telefone ou CNPJ..."
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+          />
+        </div>
+        <DateRangeFilter
+          preset={datePreset}
+          range={dateRange}
+          onChange={(p, r) => { setDatePreset(p); setDateRange(r) }}
         />
       </div>
 
@@ -177,8 +215,8 @@ export default function ClientsClient({ initialClients }: { initialClients: Clie
             </div>
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <Input label="Nome completo *" value={form.name} onChange={e => setForm(p=>({...p,name:e.target.value}))} required />
-              <Input label="Telefone" value={form.phone} onChange={e => setForm(p=>({...p,phone:e.target.value}))} placeholder="(46) 99999-0000"/>
-              <Input label="CPF / CNPJ" value={form.cpf_cnpj} onChange={e => setForm(p=>({...p,cpf_cnpj:e.target.value}))} />
+              <PhoneInput label="Telefone" value={form.phone ?? ''} onChange={v => setForm(p=>({...p,phone:v}))} />
+              <DocInput label="CPF / CNPJ" value={form.cpf_cnpj ?? ''} onChange={v => setForm(p=>({...p,cpf_cnpj:v}))} />
               <Input label="Endereço" value={form.address} onChange={e => setForm(p=>({...p,address:e.target.value}))} />
               <div className="flex gap-3 pt-2">
                 <Button type="button" variant="secondary" onClick={resetForm} className="flex-1">Cancelar</Button>

@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils'
+import { cn, formatPhoneInput, formatDocInput, formatCurrencyInput, parseCurrencyInput } from '@/lib/utils'
 import { Loader2 } from 'lucide-react'
 
 // ── Button ───────────────────────────────────────────────────────────────────
@@ -195,6 +195,64 @@ export function Input({ label, error, hint, className, ...props }: InputProps) {
       {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
       {hint && !error && <p className="text-xs text-gray-500 dark:text-neutral-400">{hint}</p>}
     </div>
+  )
+}
+
+// ── Masked Inputs ────────────────────────────────────────────────────────────
+// Mantêm a interface do Input padrão, mas formatam o valor enquanto o usuário digita.
+
+export function PhoneInput(props: Omit<InputProps, 'onChange' | 'value'> & {
+  value: string
+  onChange: (formatted: string) => void
+}) {
+  const { value, onChange, ...rest } = props
+  return (
+    <Input
+      {...rest}
+      type="tel"
+      value={value}
+      placeholder={rest.placeholder ?? '(46) 99999-0000'}
+      onChange={(e) => onChange(formatPhoneInput(e.target.value))}
+      inputMode="numeric"
+    />
+  )
+}
+
+export function DocInput(props: Omit<InputProps, 'onChange' | 'value'> & {
+  value: string
+  onChange: (formatted: string) => void
+}) {
+  const { value, onChange, ...rest } = props
+  return (
+    <Input
+      {...rest}
+      value={value}
+      placeholder={rest.placeholder ?? '000.000.000-00 ou CNPJ'}
+      onChange={(e) => onChange(formatDocInput(e.target.value))}
+      inputMode="numeric"
+    />
+  )
+}
+
+/**
+ * MoneyInput: aceita um number controlado e devolve number nas mudanças.
+ * Internamente exibe a máscara "R$ 0,00" baseada nos centavos digitados.
+ */
+export function MoneyInput(props: Omit<InputProps, 'onChange' | 'value' | 'type'> & {
+  value: number | ''
+  onChange: (next: number) => void
+}) {
+  const { value, onChange, ...rest } = props
+  const display = value === '' || value === 0 ? '' : formatCurrencyInput(String(Math.round(Number(value) * 100)))
+  return (
+    <Input
+      {...rest}
+      type="text"
+      value={display}
+      placeholder={rest.placeholder ?? 'R$ 0,00'}
+      onChange={(e) => onChange(parseCurrencyInput(e.target.value))}
+      inputMode="numeric"
+    />
   )
 }
 

@@ -22,6 +22,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { createClient } from '@/lib/supabase/client'
 import { Production, ProductionStatus, PRODUCTION_STATUS_LABELS } from '@/types'
 import { PageHeader, KpiCard } from '@/components/ui'
+import { DateRangeFilter, inRange, type DateRange, type PresetId } from '@/components/ui/date-range'
 import { formatDate, daysRemaining, cn } from '@/lib/utils'
 import { Clapperboard, Clock, CheckCircle, MoveRight, GripVertical, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -179,19 +180,31 @@ export default function ProductionClient({ initialProductions }: { initialProduc
   const [productions, setProductions] = useState<Production[]>(initialProductions)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [overId, setOverId] = useState<string | null>(null)
+  const [datePreset, setDatePreset] = useState<PresetId>('all')
+  const [dateRange, setDateRange] = useState<DateRange>({ from: null, to: null })
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   )
 
+  const visible = useMemo(
+    () => productions.filter(p => {
+      if (datePreset === 'all') return true
+      // Para "Finalizadas", filtra por finished_at; senão, por created_at
+      const ref = p.status === 'done' ? (p.finished_at ?? p.created_at) : p.created_at
+      return inRange(ref, dateRange)
+    }),
+    [productions, datePreset, dateRange],
+  )
+
   const byStatus = useMemo(() => {
     return COLUMNS.reduce((acc, col) => {
-      acc[col] = productions
+      acc[col] = visible
         .filter(p => p.status === col)
         .sort((a, b) => (a.queue_position ?? 0) - (b.queue_position ?? 0))
       return acc
     }, {} as Record<ProductionStatus, Production[]>)
-  }, [productions])
+  }, [visible])
 
   const findColumn = (id: string): ProductionStatus | null => {
     if ((COLUMNS as string[]).includes(id)) return id as ProductionStatus
@@ -318,6 +331,14 @@ export default function ProductionClient({ initialProductions }: { initialProduc
         title="Produção"
         subtitle={`${byStatus.queue.length} na fila · ${byStatus.in_progress.length} em produção · ${byStatus.done.length} finalizadas`}
       />
+
+      <div className="flex">
+        <DateRangeFilter
+          preset={datePreset}
+          range={dateRange}
+          onChange={(p, r) => { setDatePreset(p); setDateRange(r) }}
+        />
+      </div>
 
       <div className="grid grid-cols-3 gap-4">
         <KpiCard title="Na Fila" value={String(byStatus.queue.length)} icon={<Clock size={20}/>} color="blue"/>

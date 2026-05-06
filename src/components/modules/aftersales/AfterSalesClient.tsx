@@ -1,8 +1,9 @@
 'use client'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { AfterSale, SERVICES } from '@/types'
 import { Button, Badge, Card, PageHeader, KpiCard } from '@/components/ui'
+import { DateRangeFilter, inRange, type DateRange, type PresetId } from '@/components/ui/date-range'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
 import { Star, CheckCircle, Calendar, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -15,9 +16,15 @@ export default function AfterSalesClient({ initialAftersales }: { initialAftersa
   const [feedback, setFeedback] = useState('')
   const [upsell, setUpsell] = useState<string[]>([])
   const [nextContact, setNextContact] = useState('')
+  const [datePreset, setDatePreset] = useState<PresetId>('all')
+  const [dateRange, setDateRange] = useState<DateRange>({ from: null, to: null })
 
-  const contacted = aftersales.filter(a => a.contacted).length
-  const avgNps = aftersales.filter(a=>a.nps_score).reduce((s,a)=>s+(a.nps_score??0),0) / (aftersales.filter(a=>a.nps_score).length || 1)
+  const filtered = useMemo(
+    () => aftersales.filter(a => datePreset === 'all' || inRange(a.created_at, dateRange)),
+    [aftersales, datePreset, dateRange],
+  )
+  const contacted = filtered.filter(a => a.contacted).length
+  const avgNps = filtered.filter(a=>a.nps_score).reduce((s,a)=>s+(a.nps_score??0),0) / (filtered.filter(a=>a.nps_score).length || 1)
 
   async function handleDelete(id: string) {
     if (!confirm('Excluir este registro de pós-venda?')) return
@@ -40,16 +47,24 @@ export default function AfterSalesClient({ initialAftersales }: { initialAftersa
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Pós-Venda" subtitle="Acompanhamento, satisfação e oportunidades de upsell"/>
+      <PageHeader title="Pós-Venda" subtitle={`${filtered.length} de ${aftersales.length} · acompanhamento, satisfação e upsell`}/>
+
+      <div className="flex">
+        <DateRangeFilter
+          preset={datePreset}
+          range={dateRange}
+          onChange={(p, r) => { setDatePreset(p); setDateRange(r) }}
+        />
+      </div>
 
       <div className="grid grid-cols-3 gap-4">
-        <KpiCard title="Total de Pós-vendas" value={String(aftersales.length)} icon={<Star size={20}/>} color="blue"/>
-        <KpiCard title="Contatados" value={String(contacted)} subtitle={`${aftersales.length-contacted} pendentes`} icon={<CheckCircle size={20}/>} color="green"/>
-        <KpiCard title="NPS Médio" value={avgNps.toFixed(1)} subtitle="Escala 1–5" icon={<Star size={20}/>} color="purple"/>
+        <KpiCard title="Total de Pós-vendas" value={String(filtered.length)} icon={<Star size={20}/>} color="blue"/>
+        <KpiCard title="Contatados" value={String(contacted)} subtitle={`${filtered.length-contacted} pendentes`} icon={<CheckCircle size={20}/>} color="green"/>
+        <KpiCard title="NPS Médio" value={isNaN(avgNps) ? '—' : avgNps.toFixed(1)} subtitle="Escala 1–5" icon={<Star size={20}/>} color="purple"/>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {aftersales.map(a => {
+        {filtered.map(a => {
           const client = (a as any).client
           const sale = (a as any).sale
           const isEditing = editing === a.id
