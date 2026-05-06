@@ -10,13 +10,17 @@ import { Logo } from '@/components/logo'
 import {
   LayoutDashboard, Users, UserPlus, ShoppingBag, Package,
   Clapperboard, DollarSign, Star, Bell, LogOut, Sun, Moon, X,
+  ShieldCheck,
 } from 'lucide-react'
 
+type NavGroup = 'main' | 'ops' | 'admin'
 type NavItem = {
   href: string
   label: string
   icon: typeof LayoutDashboard
-  group: 'main' | 'ops'
+  group: NavGroup
+  /** Se definido, item só aparece para esses cargos */
+  roles?: Array<'admin' | 'manager' | 'operator'>
 }
 
 const NAV: NavItem[] = [
@@ -28,6 +32,7 @@ const NAV: NavItem[] = [
   { href: '/production', label: 'Produção',   icon: Clapperboard,    group: 'ops' },
   { href: '/financial',  label: 'Financeiro', icon: DollarSign,      group: 'ops' },
   { href: '/aftersales', label: 'Pós-Venda',  icon: Star,            group: 'ops' },
+  { href: '/team',       label: 'Equipe',     icon: ShieldCheck,     group: 'admin', roles: ['admin', 'manager'] },
 ]
 
 export function Sidebar({
@@ -45,8 +50,24 @@ export function Sidebar({
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [unreadCount, setUnreadCount] = useState<number>(initialCount)
+  const [role, setRole] = useState<'admin' | 'manager' | 'operator' | null>(null)
 
   useEffect(() => setMounted(true), [])
+
+  // Busca o cargo do usuário logado para filtrar itens restritos do menu
+  useEffect(() => {
+    let cancelled = false
+    async function fetchRole() {
+      try {
+        const res = await fetch('/api/auth/me', { cache: 'no-store' })
+        if (!res.ok) return
+        const json = await res.json()
+        if (!cancelled && json?.user?.role) setRole(json.user.role)
+      } catch {}
+    }
+    fetchRole()
+    return () => { cancelled = true }
+  }, [])
 
   // Busca contagem de não lidas + atualiza quando o user muda de rota
   useEffect(() => {
@@ -67,8 +88,10 @@ export function Sidebar({
     router.push('/auth/login')
   }
 
-  const main = NAV.filter(n => n.group === 'main')
-  const ops  = NAV.filter(n => n.group === 'ops')
+  const isAllowed = (item: NavItem) => !item.roles || (role !== null && item.roles.includes(role))
+  const main  = NAV.filter(n => n.group === 'main' && isAllowed(n))
+  const ops   = NAV.filter(n => n.group === 'ops' && isAllowed(n))
+  const admin = NAV.filter(n => n.group === 'admin' && isAllowed(n))
 
   const renderNavItem = (item: NavItem) => {
     const active = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
@@ -134,6 +157,14 @@ export function Sidebar({
 
         <p className="text-[10px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-widest px-3 mb-2">Operações</p>
         <div className="space-y-0.5">{ops.map(renderNavItem)}</div>
+
+        {admin.length > 0 && (
+          <>
+            <div className="my-4 border-t border-gray-100 dark:border-white/5" />
+            <p className="text-[10px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-widest px-3 mb-2">Administração</p>
+            <div className="space-y-0.5">{admin.map(renderNavItem)}</div>
+          </>
+        )}
       </nav>
 
       {/* Footer */}

@@ -133,7 +133,7 @@ export default function SalesClient({ initialSales, clients }: { initialSales: S
         {(['all','pending','50%','100%'] as const).map(s=>(
           <button key={s} onClick={()=>setFilterStatus(s)}
             className={cn('px-3 py-1.5 rounded-xl text-xs font-medium border transition-all',
-              filterStatus===s ? 'bg-orange-700 text-white border-orange-700' : 'bg-white text-gray-600 border-gray-200 hover:border-orange-300')}>
+              filterStatus===s ? 'bg-orange-700 text-white border-orange-700' : 'bg-white dark:bg-neutral-900 text-gray-600 dark:text-neutral-300 border-gray-200 dark:border-neutral-800 hover:border-orange-300 dark:hover:border-orange-500/50')}>
             {s==='all'?'Todas':PAYMENT_STATUS_LABELS[s]}
             <span className="ml-1.5 opacity-70">{s==='all'?sales.length:sales.filter(x=>x.payment_status===s).length}</span>
           </button>
@@ -145,34 +145,34 @@ export default function SalesClient({ initialSales, clients }: { initialSales: S
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/50">
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Cliente</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Serviços</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Valor</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Pagamento</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Data</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Ações</th>
+              <tr className="border-b border-gray-100 dark:border-neutral-800 bg-gray-50/50 dark:bg-neutral-900/40">
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-neutral-400 uppercase">Cliente</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-neutral-400 uppercase">Serviços</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-neutral-400 uppercase">Valor</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-neutral-400 uppercase">Pagamento</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-neutral-400 uppercase">Data</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-neutral-400 uppercase">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-50 dark:divide-neutral-800/60">
               {filtered.length === 0 && (
-                <tr><td colSpan={6} className="text-center py-12 text-sm text-gray-400">Nenhuma venda encontrada</td></tr>
+                <tr><td colSpan={6} className="text-center py-12 text-sm text-gray-400 dark:text-neutral-500">Nenhuma venda encontrada</td></tr>
               )}
               {filtered.map(sale => (
                 <tr key={sale.id} className="hover:bg-orange-500/5 transition-colors group">
                   <td className="px-4 py-3">
-                    <p className="text-sm font-semibold text-gray-900">{(sale as any).client?.name}</p>
-                    <p className="text-xs text-gray-400">{sale.client_type === 'returning' ? '↩ Recorrente' : '✦ Novo'}</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-neutral-100">{(sale as any).client?.name}</p>
+                    <p className="text-xs text-gray-400 dark:text-neutral-500">{sale.client_type === 'returning' ? '↩ Recorrente' : '✦ Novo'}</p>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">
-                      {sale.services.slice(0,2).map(s=><span key={s} className="text-xs bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full">{s}</span>)}
-                      {sale.services.length > 2 && <span className="text-xs text-gray-400">+{sale.services.length-2}</span>}
+                      {sale.services.slice(0,2).map(s=><span key={s} className="text-xs bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded-full">{s}</span>)}
+                      {sale.services.length > 2 && <span className="text-xs text-gray-400 dark:text-neutral-500">+{sale.services.length-2}</span>}
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <p className="text-sm font-bold text-gray-900">{formatCurrency(sale.total_value)}</p>
-                    {sale.paid_traffic && <p className="text-xs text-purple-600">Tráfego pago</p>}
+                    <p className="text-sm font-bold text-gray-900 dark:text-neutral-100">{formatCurrency(sale.total_value)}</p>
+                    {sale.paid_traffic && <p className="text-xs text-purple-600 dark:text-purple-400">Tráfego pago</p>}
                   </td>
                   <td className="px-4 py-3">
                     <Badge variant={PAYMENT_BADGE[sale.payment_status]}>
@@ -213,12 +213,12 @@ export default function SalesClient({ initialSales, clients }: { initialSales: S
               <Select label="Cliente *" options={clientOptions} value={form.client_id} onChange={e=>setForm(p=>({...p,client_id:e.target.value}))} required/>
 
               <div>
-                <p className="text-sm font-medium text-gray-700 mb-2">Serviços *</p>
+                <p className="text-sm font-medium text-gray-700 dark:text-neutral-300 mb-2">Serviços *</p>
                 <div className="flex flex-wrap gap-2">
                   {SERVICES.map(svc=>(
                     <button key={svc} type="button" onClick={()=>toggleService(svc)}
                       className={cn('px-3 py-1.5 rounded-xl text-xs font-medium border transition-all',
-                        form.services.includes(svc) ? 'bg-orange-700 text-white border-orange-700' : 'bg-white text-gray-600 border-gray-200 hover:border-orange-300')}>
+                        form.services.includes(svc) ? 'bg-orange-700 text-white border-orange-700' : 'bg-white dark:bg-neutral-900 text-gray-600 dark:text-neutral-300 border-gray-200 dark:border-neutral-800 hover:border-orange-300 dark:hover:border-orange-500/50')}>
                       {svc}
                     </button>
                   ))}
@@ -237,7 +237,7 @@ export default function SalesClient({ initialSales, clients }: { initialSales: S
 
               <div className="flex items-center gap-3">
                 <input type="checkbox" id="paid_traffic" checked={form.paid_traffic} onChange={e=>setForm(p=>({...p,paid_traffic:e.target.checked}))} className="rounded"/>
-                <label htmlFor="paid_traffic" className="text-sm text-gray-700">Veio de tráfego pago?</label>
+                <label htmlFor="paid_traffic" className="text-sm text-gray-700 dark:text-neutral-300">Veio de tráfego pago?</label>
               </div>
 
               {!editingId && (

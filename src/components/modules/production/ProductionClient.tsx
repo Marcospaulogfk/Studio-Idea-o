@@ -33,9 +33,9 @@ const COL_COLORS: Record<ProductionStatus, string> = {
   done: 'border-t-green-500',
 }
 const COL_BG: Record<ProductionStatus, string> = {
-  queue: 'bg-gray-50',
-  in_progress: 'bg-yellow-50/30',
-  done: 'bg-green-50/30',
+  queue: 'bg-gray-50 dark:bg-neutral-900/40',
+  in_progress: 'bg-yellow-50/30 dark:bg-yellow-500/5',
+  done: 'bg-green-50/30 dark:bg-green-500/5',
 }
 const COL_RING: Record<ProductionStatus, string> = {
   queue: 'ring-gray-400',
@@ -49,16 +49,16 @@ function ProductionCardBody({ prod }: { prod: Production }) {
   const daysLeft = pkg?.expires_at ? daysRemaining(pkg.expires_at) : null
   return (
     <>
-      <p className="font-semibold text-gray-900 text-sm">{client?.name ?? '—'}</p>
-      {prod.title && <p className="text-xs text-gray-500 mt-0.5">{prod.title}</p>}
+      <p className="font-semibold text-gray-900 dark:text-neutral-100 text-sm">{client?.name ?? '—'}</p>
+      {prod.title && <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">{prod.title}</p>}
       {daysLeft !== null && (
         <div className={cn('text-xs mt-2 flex items-center gap-1 font-medium',
-          daysLeft <= 7 ? 'text-red-600' : daysLeft <= 15 ? 'text-yellow-600' : 'text-gray-500')}>
+          daysLeft <= 7 ? 'text-red-600 dark:text-red-400' : daysLeft <= 15 ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-500 dark:text-neutral-400')}>
           <Clock size={10}/>
           Pacote vence em {daysLeft}d
         </div>
       )}
-      {prod.notes && <p className="text-xs text-gray-400 mt-1 italic">{prod.notes}</p>}
+      {prod.notes && <p className="text-xs text-gray-400 dark:text-neutral-500 mt-1 italic">{prod.notes}</p>}
     </>
   )
 }
@@ -108,7 +108,7 @@ function SortableProductionCard({
             {...attributes}
             {...listeners}
             aria-label="Arrastar"
-            className="p-1 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing touch-none"
+            className="p-1 text-gray-300 dark:text-neutral-600 hover:text-gray-500 dark:hover:text-neutral-300 cursor-grab active:cursor-grabbing touch-none"
             onClick={(e) => e.stopPropagation()}
           >
             <GripVertical size={16} />
@@ -118,24 +118,24 @@ function SortableProductionCard({
       <div className="flex gap-2 mt-3">
         {col === 'queue' && (
           <button onClick={() => onMove(prod, 'in_progress')}
-            className="flex-1 text-xs bg-yellow-50 text-yellow-700 hover:bg-yellow-100 py-1.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-1">
+            className="flex-1 text-xs bg-yellow-50 dark:bg-yellow-500/10 text-yellow-700 dark:text-yellow-300 hover:bg-yellow-100 dark:hover:bg-yellow-500/20 py-1.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-1">
             <MoveRight size={12}/> Iniciar
           </button>
         )}
         {col === 'in_progress' && (
           <>
             <button onClick={() => onMove(prod, 'queue')}
-              className="text-xs text-gray-400 hover:text-gray-600 px-2">
+              className="text-xs text-gray-400 dark:text-neutral-500 hover:text-gray-600 dark:hover:text-neutral-300 px-2">
               ← Voltar
             </button>
             <button onClick={() => onMove(prod, 'done')}
-              className="flex-1 text-xs bg-green-50 text-green-700 hover:bg-green-100 py-1.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-1">
+              className="flex-1 text-xs bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-500/20 py-1.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-1">
               <CheckCircle size={12}/> Finalizar
             </button>
           </>
         )}
         {col === 'done' && prod.finished_at && (
-          <p className="text-xs text-green-600">✓ {formatDate(prod.finished_at)}</p>
+          <p className="text-xs text-green-600 dark:text-green-400">✓ {formatDate(prod.finished_at)}</p>
         )}
       </div>
     </div>
@@ -164,8 +164,8 @@ function DroppableColumn({
       )}
     >
       <div className="flex items-center gap-2 mb-4">
-        <h3 className="font-semibold text-gray-700 text-sm">{PRODUCTION_STATUS_LABELS[status]}</h3>
-        <span className="bg-white text-gray-500 text-xs font-bold px-2 py-0.5 rounded-full shadow-sm">
+        <h3 className="font-semibold text-gray-700 dark:text-neutral-200 text-sm">{PRODUCTION_STATUS_LABELS[status]}</h3>
+        <span className="bg-white dark:bg-neutral-800 text-gray-500 dark:text-neutral-300 text-xs font-bold px-2 py-0.5 rounded-full shadow-sm">
           {count}
         </span>
       </div>
@@ -346,8 +346,8 @@ export default function ProductionClient({ initialProductions }: { initialProduc
                 strategy={verticalListSortingStrategy}
               >
                 {byStatus[col].length === 0 && (
-                  <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center">
-                    <p className="text-xs text-gray-400">Solte um card aqui</p>
+                  <div className="border-2 border-dashed border-gray-200 dark:border-neutral-800 rounded-xl p-6 text-center">
+                    <p className="text-xs text-gray-400 dark:text-neutral-500">Solte um card aqui</p>
                   </div>
                 )}
                 {byStatus[col].map(prod => (
@@ -360,7 +360,7 @@ export default function ProductionClient({ initialProductions }: { initialProduc
 
         <DragOverlay>
           {activeProd && (
-            <div className={cn('bg-white rounded-xl p-3 shadow-2xl border-t-4 rotate-2 cursor-grabbing', COL_COLORS[activeProd.status])}>
+            <div className={cn('bg-white dark:bg-neutral-900 rounded-xl p-3 shadow-2xl border-t-4 rotate-2 cursor-grabbing', COL_COLORS[activeProd.status])}>
               <ProductionCardBody prod={activeProd} />
             </div>
           )}

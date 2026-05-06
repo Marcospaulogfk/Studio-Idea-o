@@ -30,11 +30,11 @@ import toast from 'react-hot-toast'
 const STAGES: LeadStage[] = ['new', 'negotiating', 'closed', 'disqualified', 'future']
 
 const STAGE_COLORS: Record<LeadStage, string> = {
-  new:           'border-l-blue-500 bg-blue-50/30',
-  negotiating:   'border-l-yellow-500 bg-yellow-50/30',
-  closed:        'border-l-green-500 bg-green-50/30',
-  disqualified:  'border-l-red-500 bg-red-50/30',
-  future:        'border-l-purple-500 bg-purple-50/30',
+  new:           'border-l-blue-500   bg-blue-50/30   dark:bg-blue-500/5',
+  negotiating:   'border-l-yellow-500 bg-yellow-50/30 dark:bg-yellow-500/5',
+  closed:        'border-l-green-500  bg-green-50/30  dark:bg-green-500/5',
+  disqualified:  'border-l-red-500    bg-red-50/30    dark:bg-red-500/5',
+  future:        'border-l-purple-500 bg-purple-50/30 dark:bg-purple-500/5',
 }
 
 const STAGE_BADGE: Record<LeadStage, 'blue' | 'yellow' | 'green' | 'red' | 'purple'> = {
@@ -65,19 +65,19 @@ function LeadCardBody({ lead }: { lead: Lead }) {
   return (
     <>
       <div className="flex items-start justify-between gap-2">
-        <p className="text-sm font-semibold text-gray-900 leading-tight">{lead.name}</p>
+        <p className="text-sm font-semibold text-gray-900 dark:text-neutral-100 leading-tight">{lead.name}</p>
         {urgencyBadge(lead)}
       </div>
-      {lead.service && <p className="text-xs text-gray-500 mt-0.5">{lead.service}</p>}
+      {lead.service && <p className="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">{lead.service}</p>}
       {lead.estimated_value && (
-        <p className="text-xs font-medium text-green-700 mt-1">{formatCurrency(lead.estimated_value)}</p>
+        <p className="text-xs font-medium text-green-700 dark:text-green-400 mt-1">{formatCurrency(lead.estimated_value)}</p>
       )}
       <div className="flex items-center gap-3 mt-2">
         {lead.origin && (
-          <span className="text-xs text-gray-400">{ORIGIN_LABELS[lead.origin as LeadOrigin]}</span>
+          <span className="text-xs text-gray-400 dark:text-neutral-500">{ORIGIN_LABELS[lead.origin as LeadOrigin]}</span>
         )}
         {lead.last_contact && (
-          <span className="text-xs text-gray-400 flex items-center gap-1">
+          <span className="text-xs text-gray-400 dark:text-neutral-500 flex items-center gap-1">
             <Clock size={10} /> {formatRelative(lead.last_contact)}
           </span>
         )}
@@ -102,7 +102,7 @@ function SortableLeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }
       style={style}
       onClick={onClick}
       className={cn(
-        'bg-white border-l-4 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer',
+        'bg-white dark:bg-neutral-900 border-l-4 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer',
         STAGE_COLORS[lead.funnel_stage],
       )}
     >
@@ -114,7 +114,7 @@ function SortableLeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }
           {...attributes}
           {...listeners}
           aria-label="Arrastar"
-          className="text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing touch-none -mt-1"
+          className="text-gray-300 dark:text-neutral-600 hover:text-gray-500 dark:hover:text-neutral-300 cursor-grab active:cursor-grabbing touch-none -mt-1"
           onClick={(e) => e.stopPropagation()}
         >
           <GripVertical size={16} />
@@ -141,14 +141,14 @@ function DroppableStageColumn({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Badge variant={STAGE_BADGE[stage]}>{LEAD_STAGE_LABELS[stage]}</Badge>
-          <span className="text-xs text-gray-400 font-medium">{count}</span>
+          <span className="text-xs text-gray-400 dark:text-neutral-500 font-medium">{count}</span>
         </div>
       </div>
       <div
         ref={setNodeRef}
         className={cn(
           'space-y-2 min-h-32 rounded-xl p-2 transition-all',
-          isOver && cn('ring-2', STAGE_RING[stage], 'bg-white/40'),
+          isOver && cn('ring-2', STAGE_RING[stage], 'bg-white/40 dark:bg-white/5'),
         )}
       >
         {children}
@@ -384,7 +384,7 @@ export default function LeadsClient({ initialLeads }: Props) {
               'px-3 py-1.5 rounded-xl text-xs font-medium transition-all border',
               filterStage === stage
                 ? 'bg-orange-700 text-white border-orange-700'
-                : 'bg-white text-gray-600 border-gray-200 hover:border-orange-300'
+                : 'bg-white dark:bg-neutral-900 text-gray-600 dark:text-neutral-300 border-gray-200 dark:border-neutral-800 hover:border-orange-300 dark:hover:border-orange-500/50'
             )}
           >
             {label}
@@ -421,8 +421,8 @@ export default function LeadsClient({ initialLeads }: Props) {
                   strategy={verticalListSortingStrategy}
                 >
                   {stageLeads.length === 0 && (
-                    <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl p-4 text-center">
-                      <p className="text-xs text-gray-400">Solte um lead aqui</p>
+                    <div className="bg-gray-50 dark:bg-neutral-900/40 border-2 border-dashed border-gray-200 dark:border-neutral-800 rounded-xl p-4 text-center">
+                      <p className="text-xs text-gray-400 dark:text-neutral-500">Solte um lead aqui</p>
                     </div>
                   )}
                   {stageLeads.map(lead => (
@@ -440,7 +440,7 @@ export default function LeadsClient({ initialLeads }: Props) {
 
         <DragOverlay>
           {activeLead && (
-            <div className={cn('bg-white border-l-4 rounded-xl p-3 shadow-2xl rotate-2 cursor-grabbing', STAGE_COLORS[activeLead.funnel_stage])}>
+            <div className={cn('bg-white dark:bg-neutral-900 border-l-4 rounded-xl p-3 shadow-2xl rotate-2 cursor-grabbing', STAGE_COLORS[activeLead.funnel_stage])}>
               <LeadCardBody lead={activeLead} />
             </div>
           )}
@@ -453,7 +453,7 @@ export default function LeadsClient({ initialLeads }: Props) {
           <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-lg">
             <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-neutral-800">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-neutral-100">{editingId ? 'Editar Lead' : 'Novo Lead'}</h2>
-              <button onClick={resetForm} className="text-gray-400 hover:text-gray-600">
+              <button onClick={resetForm} className="text-gray-400 hover:text-gray-600 dark:hover:text-neutral-200">
                 <X size={20} />
               </button>
             </div>
@@ -480,15 +480,15 @@ export default function LeadsClient({ initialLeads }: Props) {
       {/* Modal: Detalhe do Lead */}
       {selectedLead && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white rounded-t-2xl">
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-neutral-800 sticky top-0 bg-white dark:bg-neutral-900 rounded-t-2xl">
               <div>
-                <h2 className="text-lg font-semibold">{selectedLead.name}</h2>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-neutral-100">{selectedLead.name}</h2>
                 <Badge variant={STAGE_BADGE[selectedLead.funnel_stage]} className="mt-1">
                   {LEAD_STAGE_LABELS[selectedLead.funnel_stage]}
                 </Badge>
               </div>
-              <button onClick={() => setSelectedLead(null)} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => setSelectedLead(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-neutral-200">
                 <X size={20} />
               </button>
             </div>
@@ -496,27 +496,27 @@ export default function LeadsClient({ initialLeads }: Props) {
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 {selectedLead.phone && (
-                  <div className="flex items-center gap-2 text-gray-700">
-                    <Phone size={14} className="text-gray-400" /> {selectedLead.phone}
+                  <div className="flex items-center gap-2 text-gray-700 dark:text-neutral-300">
+                    <Phone size={14} className="text-gray-400 dark:text-neutral-500" /> {selectedLead.phone}
                   </div>
                 )}
                 {selectedLead.estimated_value && (
-                  <div className="font-semibold text-green-700">{formatCurrency(selectedLead.estimated_value)}</div>
+                  <div className="font-semibold text-green-700 dark:text-green-400">{formatCurrency(selectedLead.estimated_value)}</div>
                 )}
-                {selectedLead.service && <div className="text-gray-600">{selectedLead.service}</div>}
-                {selectedLead.origin && <div className="text-gray-600">{ORIGIN_LABELS[selectedLead.origin as LeadOrigin]}</div>}
+                {selectedLead.service && <div className="text-gray-600 dark:text-neutral-300">{selectedLead.service}</div>}
+                {selectedLead.origin && <div className="text-gray-600 dark:text-neutral-300">{ORIGIN_LABELS[selectedLead.origin as LeadOrigin]}</div>}
                 {selectedLead.last_contact && (
-                  <div className="flex items-center gap-2 text-gray-500 col-span-2">
+                  <div className="flex items-center gap-2 text-gray-500 dark:text-neutral-400 col-span-2">
                     <Clock size={14} /> Último contato: {formatRelative(selectedLead.last_contact)}
                   </div>
                 )}
               </div>
               {selectedLead.notes && (
-                <div className="bg-gray-50 rounded-xl p-3 text-sm text-gray-600">{selectedLead.notes}</div>
+                <div className="bg-gray-50 dark:bg-neutral-800/60 rounded-xl p-3 text-sm text-gray-600 dark:text-neutral-300">{selectedLead.notes}</div>
               )}
 
               <div className="space-y-2">
-                <p className="text-xs font-semibold text-gray-500 uppercase">Ações</p>
+                <p className="text-xs font-semibold text-gray-500 dark:text-neutral-400 uppercase">Ações</p>
                 <div className="grid grid-cols-2 gap-2">
                   <Button size="sm" variant="secondary" onClick={() => handleContacted(selectedLead)}>
                     <CheckCircle size={14} /> Contatado
@@ -534,13 +534,13 @@ export default function LeadsClient({ initialLeads }: Props) {
               </div>
 
               <div className="space-y-2">
-                <p className="text-xs font-semibold text-gray-500 uppercase">Mover para</p>
+                <p className="text-xs font-semibold text-gray-500 dark:text-neutral-400 uppercase">Mover para</p>
                 <div className="flex flex-wrap gap-2">
                   {STAGES.filter(s => s !== selectedLead.funnel_stage).map(stage => (
                     <button
                       key={stage}
                       onClick={() => handleStageChange(selectedLead, stage)}
-                      className="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-xl hover:bg-orange-50 hover:text-orange-700 transition-colors"
+                      className="px-3 py-1.5 text-xs font-medium bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 rounded-xl hover:bg-orange-50 dark:hover:bg-orange-500/10 hover:text-orange-700 dark:hover:text-orange-300 transition-colors"
                     >
                       {LEAD_STAGE_LABELS[stage]}
                     </button>

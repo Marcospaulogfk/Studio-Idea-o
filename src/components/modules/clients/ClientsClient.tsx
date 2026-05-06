@@ -94,7 +94,7 @@ export default function ClientsClient({ initialClients }: { initialClients: Clie
       </div>
 
       <div className="relative">
-        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-neutral-500" />
         <input
           value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Buscar por nome, telefone ou CNPJ..."
@@ -125,7 +125,7 @@ export default function ClientsClient({ initialClients }: { initialClients: Clie
                   <div className="flex items-center gap-3 shrink-0">
                     <div className="text-right hidden sm:block">
                       <p className="text-sm font-bold text-green-600 dark:text-green-400">{formatCurrency(client.ltv ?? 0)}</p>
-                      <p className="text-xs text-gray-400">LTV</p>
+                      <p className="text-xs text-gray-400 dark:text-neutral-500">LTV</p>
                     </div>
                     <Badge variant={client.status === 'active' ? 'green' : 'gray'}>
                       {client.status === 'active' ? 'Ativo' : 'Inativo'}
@@ -135,7 +135,7 @@ export default function ClientsClient({ initialClients }: { initialClients: Clie
                       <button onClick={(e)=>toggleStatus(client,e)} className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-500/10 transition-colors" title={client.status==='active'?'Desativar':'Reativar'}><Power size={14}/></button>
                       <button onClick={(e)=>handleDelete(client,e)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors" title="Excluir"><Trash2 size={14}/></button>
                     </div>
-                    {expandedId === client.id ? <ChevronUp size={16} className="text-gray-400"/> : <ChevronDown size={16} className="text-gray-400"/>}
+                    {expandedId === client.id ? <ChevronUp size={16} className="text-gray-400 dark:text-neutral-500"/> : <ChevronDown size={16} className="text-gray-400 dark:text-neutral-500"/>}
                   </div>
                 </div>
 

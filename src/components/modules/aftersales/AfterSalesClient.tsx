@@ -71,24 +71,24 @@ export default function AfterSalesClient({ initialAftersales }: { initialAftersa
               {a.nps_score && (
                 <div className="flex items-center gap-1 mb-2">
                   {[1,2,3,4,5].map(s => (
-                    <Star key={s} size={14} className={s <= (a.nps_score??0) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200'}/>
+                    <Star key={s} size={14} className={s <= (a.nps_score??0) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200 dark:text-neutral-700'}/>
                   ))}
-                  <span className="text-xs text-gray-500 ml-1">NPS {a.nps_score}/5</span>
+                  <span className="text-xs text-gray-500 dark:text-neutral-400 ml-1">NPS {a.nps_score}/5</span>
                 </div>
               )}
 
-              {a.feedback && <p className="text-xs text-gray-600 italic mb-2">"{a.feedback}"</p>}
+              {a.feedback && <p className="text-xs text-gray-600 dark:text-neutral-300 italic mb-2">"{a.feedback}"</p>}
 
               {a.upsell_interest && a.upsell_interest.length > 0 && (
                 <div className="flex flex-wrap gap-1 mb-2">
                   {a.upsell_interest.map(s => (
-                    <span key={s} className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full">{s}</span>
+                    <span key={s} className="text-xs bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-full">{s}</span>
                   ))}
                 </div>
               )}
 
               {a.next_contact && (
-                <div className="flex items-center gap-1 text-xs text-gray-500 mb-3">
+                <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-neutral-400 mb-3">
                   <Calendar size={12}/> Próximo contato: {formatDate(a.next_contact)}
                 </div>
               )}
@@ -101,14 +101,14 @@ export default function AfterSalesClient({ initialAftersales }: { initialAftersa
                   {a.contacted ? 'Editar' : 'Registrar Pós-venda'}
                 </Button>
               ) : (
-                <div className="space-y-3 pt-2 border-t border-gray-100 mt-2">
+                <div className="space-y-3 pt-2 border-t border-gray-100 dark:border-neutral-800 mt-2">
                   <div>
-                    <p className="text-xs font-medium text-gray-600 mb-1">NPS (1–5)</p>
+                    <p className="text-xs font-medium text-gray-600 dark:text-neutral-300 mb-1">NPS (1–5)</p>
                     <div className="flex gap-1">
                       {[1,2,3,4,5].map(s=>(
                         <button key={s} onClick={()=>setNps(s)} type="button"
                           className={cn('w-8 h-8 rounded-full text-sm font-bold transition-all',
-                            s<=nps?'bg-yellow-400 text-white':'bg-gray-100 text-gray-400 hover:bg-gray-200')}>
+                            s<=nps?'bg-yellow-400 text-white':'bg-gray-100 dark:bg-neutral-800 text-gray-400 dark:text-neutral-500 hover:bg-gray-200 dark:hover:bg-neutral-700')}>
                           {s}
                         </button>
                       ))}
@@ -116,21 +116,21 @@ export default function AfterSalesClient({ initialAftersales }: { initialAftersa
                   </div>
                   <textarea value={feedback} onChange={e=>setFeedback(e.target.value)}
                     placeholder="Feedback do cliente..."
-                    className="w-full text-xs border border-gray-200 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none" rows={2}/>
+                    className="w-full text-xs border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none" rows={2}/>
                   <div>
-                    <p className="text-xs font-medium text-gray-600 mb-1">Interesse em serviços</p>
+                    <p className="text-xs font-medium text-gray-600 dark:text-neutral-300 mb-1">Interesse em serviços</p>
                     <div className="flex flex-wrap gap-1">
                       {SERVICES.map(s=>(
                         <button key={s} type="button" onClick={()=>setUpsell(prev=>prev.includes(s)?prev.filter(x=>x!==s):[...prev,s])}
                           className={cn('text-xs px-2 py-1 rounded-xl border transition-all',
-                            upsell.includes(s)?'bg-purple-600 text-white border-purple-600':'bg-white text-gray-600 border-gray-200')}>
+                            upsell.includes(s)?'bg-purple-600 text-white border-purple-600':'bg-white dark:bg-neutral-900 text-gray-600 dark:text-neutral-300 border-gray-200 dark:border-neutral-800')}>
                           {s}
                         </button>
                       ))}
                     </div>
                   </div>
                   <input type="date" value={nextContact} onChange={e=>setNextContact(e.target.value)}
-                    className="w-full text-xs border border-gray-200 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-orange-500"/>
+                    className="w-full text-xs border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-orange-500"/>
                   <div className="flex gap-2">
                     <Button size="sm" variant="secondary" onClick={()=>setEditing(null)} className="flex-1">Cancelar</Button>
                     <Button size="sm" onClick={()=>saveAfterSale(a.id)} className="flex-1">Salvar</Button>

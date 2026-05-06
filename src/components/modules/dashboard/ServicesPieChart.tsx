@@ -15,16 +15,16 @@ export function ServicesPieChart({ data }: { data: ServiceSlice[] }) {
   const total = top.reduce((s, d) => s + d.count, 0)
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-[1fr,auto] gap-4 items-center">
-      <div className="h-56">
+    <div className="flex flex-col gap-4">
+      <div className="w-full h-52 sm:h-56">
         <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
+          <PieChart margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
             <Pie
               data={top}
               dataKey="count"
               nameKey="service"
-              innerRadius={50}
-              outerRadius={85}
+              innerRadius="55%"
+              outerRadius="90%"
               paddingAngle={2}
               strokeWidth={0}
             >
@@ -45,12 +45,12 @@ export function ServicesPieChart({ data }: { data: ServiceSlice[] }) {
           </PieChart>
         </ResponsiveContainer>
       </div>
-      <ul className="space-y-2 text-sm min-w-[170px]">
+      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
         {top.map((s, i) => (
-          <li key={s.service} className="flex items-center gap-2">
+          <li key={s.service} className="flex items-center gap-2 min-w-0">
             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: PALETTE[i % PALETTE.length] }} />
             <span className="text-gray-700 dark:text-neutral-300 truncate flex-1">{s.service}</span>
-            <span className="text-xs font-semibold text-gray-900 dark:text-neutral-100">{s.count}</span>
+            <span className="text-xs font-semibold text-gray-900 dark:text-neutral-100 shrink-0">{s.count}</span>
           </li>
         ))}
       </ul>

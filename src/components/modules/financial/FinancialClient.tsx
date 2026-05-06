@@ -118,7 +118,7 @@ export default function FinancialClient({ initialFinancials }: { initialFinancia
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 dark:divide-neutral-800">
-              {filtered.length===0 && <tr><td colSpan={6} className="text-center py-10 text-sm text-gray-400">Nenhum lançamento</td></tr>}
+              {filtered.length===0 && <tr><td colSpan={6} className="text-center py-10 text-sm text-gray-400 dark:text-neutral-500">Nenhum lançamento</td></tr>}
               {filtered.map(f=>(
                 <tr key={f.id} className="hover:bg-orange-500/5 transition-colors group">
                   <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-neutral-100">{f.description}</td>

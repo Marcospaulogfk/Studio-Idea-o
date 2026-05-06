@@ -91,7 +91,7 @@ export default function ClientDetailClient({ client, sales, packages, production
       <Card>
         <CardHeader title="Histórico de Vendas" subtitle={`${sales.length} venda${sales.length !== 1 ? 's' : ''}`} />
         {sales.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-6">Nenhuma venda registrada ainda</p>
+          <p className="text-sm text-gray-400 dark:text-neutral-500 text-center py-6">Nenhuma venda registrada ainda</p>
         ) : (
           <div className="overflow-x-auto -mx-6">
             <table className="w-full">
@@ -112,9 +112,9 @@ export default function ClientDetailClient({ client, sales, packages, production
                         {s.services?.slice(0, 3).map(svc => (
                           <span key={svc} className="text-xs bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400 px-2 py-0.5 rounded-full">{svc}</span>
                         ))}
-                        {s.services && s.services.length > 3 && <span className="text-xs text-gray-400">+{s.services.length - 3}</span>}
+                        {s.services && s.services.length > 3 && <span className="text-xs text-gray-400 dark:text-neutral-500">+{s.services.length - 3}</span>}
                       </div>
-                      {s.description && <p className="text-xs text-gray-400 mt-1 truncate max-w-xs">{s.description}</p>}
+                      {s.description && <p className="text-xs text-gray-400 dark:text-neutral-500 mt-1 truncate max-w-xs">{s.description}</p>}
                     </td>
                     <td className="px-3 py-3 text-right text-sm font-bold text-gray-900 dark:text-neutral-100">{formatCurrency(s.total_value)}</td>
                     <td className="px-6 py-3 text-right">
@@ -135,7 +135,7 @@ export default function ClientDetailClient({ client, sales, packages, production
         <Card>
           <CardHeader title="Pacotes" subtitle={`${activePackages.length} ativo${activePackages.length !== 1 ? 's' : ''} de ${packages.length}`} />
           {packages.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-6">Nenhum pacote registrado</p>
+            <p className="text-sm text-gray-400 dark:text-neutral-500 text-center py-6">Nenhum pacote registrado</p>
           ) : (
             <div className="space-y-3">
               {packages.map(pkg => {
@@ -163,7 +163,7 @@ export default function ClientDetailClient({ client, sales, packages, production
                     <div className="flex items-center justify-between text-xs text-gray-500 dark:text-neutral-400 mb-1">
                       <span>{pkg.arts_used}/{pkg.arts_total} artes</span>
                       {pkg.status === 'active' && days > 0 && (
-                        <span className={cn(level === 'critical' ? 'text-red-600' : level === 'warning' ? 'text-yellow-600' : '')}>
+                        <span className={cn(level === 'critical' ? 'text-red-600 dark:text-red-400' : level === 'warning' ? 'text-yellow-600 dark:text-yellow-400' : '')}>
                           {days} dias restantes
                         </span>
                       )}
@@ -180,16 +180,16 @@ export default function ClientDetailClient({ client, sales, packages, production
         <Card>
           <CardHeader title="Produções" subtitle={`${productions.length} no histórico`} />
           {productions.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-6">Nenhuma produção registrada</p>
+            <p className="text-sm text-gray-400 dark:text-neutral-500 text-center py-6">Nenhuma produção registrada</p>
           ) : (
             <div className="space-y-2">
               {productions.slice(0, 8).map(p => (
                 <div key={p.id} className="flex items-start justify-between gap-3 p-2.5 -mx-2 rounded-lg hover:bg-orange-500/5 transition-colors">
                   <div className="flex items-start gap-2 min-w-0 flex-1">
-                    <Clapperboard size={14} className="text-gray-400 mt-0.5 shrink-0" />
+                    <Clapperboard size={14} className="text-gray-400 dark:text-neutral-500 mt-0.5 shrink-0" />
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-gray-800 dark:text-neutral-200 truncate">{p.title ?? 'Sem título'}</p>
-                      <p className="text-xs text-gray-400">{formatRelative(p.created_at)}</p>
+                      <p className="text-xs text-gray-400 dark:text-neutral-500">{formatRelative(p.created_at)}</p>
                     </div>
                   </div>
                   <Badge variant={p.status === 'done' ? 'green' : p.status === 'in_progress' ? 'yellow' : 'gray'} className="shrink-0">
@@ -198,7 +198,7 @@ export default function ClientDetailClient({ client, sales, packages, production
                 </div>
               ))}
               {productions.length > 8 && (
-                <p className="text-xs text-gray-400 text-center pt-2">+ {productions.length - 8} mais</p>
+                <p className="text-xs text-gray-400 dark:text-neutral-500 text-center pt-2">+ {productions.length - 8} mais</p>
               )}
             </div>
           )}
@@ -216,7 +216,7 @@ export default function ClientDetailClient({ client, sales, packages, production
                   <Badge variant={a.contacted ? 'green' : 'yellow'} pulse={!a.contacted}>
                     {a.contacted ? 'Contatado' : 'Pendente'}
                   </Badge>
-                  <span className="text-xs text-gray-400">{formatRelative(a.created_at)}</span>
+                  <span className="text-xs text-gray-400 dark:text-neutral-500">{formatRelative(a.created_at)}</span>
                 </div>
                 {a.nps_score && (
                   <div className="flex items-center gap-1 mb-1.5">

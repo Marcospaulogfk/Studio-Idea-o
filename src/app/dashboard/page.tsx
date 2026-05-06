@@ -126,7 +126,7 @@ export default async function DashboardPage() {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-400 text-center py-8">Nenhuma venda ainda!</p>
+            <p className="text-sm text-gray-400 dark:text-neutral-500 text-center py-8">Nenhuma venda ainda!</p>
           )}
         </Card>
 
@@ -154,7 +154,7 @@ export default async function DashboardPage() {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-400 text-center py-8">Nenhum lead ainda!</p>
+            <p className="text-sm text-gray-400 dark:text-neutral-500 text-center py-8">Nenhum lead ainda!</p>
           )}
         </Card>
       </div>
