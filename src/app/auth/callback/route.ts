@@ -42,6 +42,11 @@ export async function GET(request: NextRequest) {
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (error) {
+      // Se for invite/recovery, manda pra tela de update-password mesmo sem sessão.
+      // A própria página detecta sessão ausente e mostra mensagem útil.
+      if (isInviteOrRecovery) {
+        return NextResponse.redirect(`${origin}/auth/update-password`)
+      }
       return NextResponse.redirect(`${origin}/auth/login?error=invalid_code`)
     }
     return NextResponse.redirect(`${origin}${next}`)
@@ -56,9 +61,16 @@ export async function GET(request: NextRequest) {
       }
       return NextResponse.redirect(`${origin}${next}`)
     }
+    if (type === 'invite' || type === 'recovery') {
+      return NextResponse.redirect(`${origin}/auth/update-password`)
+    }
     return NextResponse.redirect(`${origin}/auth/login?error=invalid_token`)
   }
 
-  // Sem code nem token — link inválido ou expirado
+  // Sem code nem token — provavelmente o link foi clicado direto (preview do Gmail
+  // pré-consume o token). Manda pra update-password que mostra mensagem amigável.
+  if (isInviteOrRecovery) {
+    return NextResponse.redirect(`${origin}/auth/update-password`)
+  }
   return NextResponse.redirect(`${origin}/auth/login?error=auth_error`)
 }
