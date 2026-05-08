@@ -1,0 +1,201 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:w="urn:schemas-microsoft-com:office:word"
+      xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="utf-8">
+<title>Briefing — Hospedagem e E-mail · Studio Ideação CRM</title>
+<!--[if gte mso 9]>
+<xml>
+  <w:WordDocument>
+    <w:View>Print</w:View>
+    <w:Zoom>100</w:Zoom>
+    <w:DoNotOptimizeForBrowser/>
+  </w:WordDocument>
+</xml>
+<![endif]-->
+<style>
+@page {
+  size: A4;
+  margin: 2.5cm 2cm;
+  mso-header-margin: 1cm;
+  mso-footer-margin: 1cm;
+}
+body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; color: #1a1a1a; line-height: 1.45; }
+h1 { font-size: 22pt; color: #FF6B00; border-bottom: 3px solid #FF6B00; padding-bottom: 6pt; margin-top: 0; }
+h2 { font-size: 15pt; color: #1C2333; border-bottom: 1px solid #FF6B00; padding-bottom: 3pt; margin-top: 24pt; }
+h3 { font-size: 12pt; color: #1C2333; margin-top: 18pt; margin-bottom: 6pt; }
+p { margin: 6pt 0; }
+ul, ol { margin: 6pt 0 6pt 18pt; }
+li { margin: 3pt 0; }
+.subtitle { color: #666; font-size: 10pt; margin-top: -4pt; }
+.box { border: 1px solid #ddd; background: #fafafa; padding: 10pt 14pt; margin: 12pt 0; border-left: 4px solid #FF6B00; }
+.warn { border-left-color: #d97706; background: #fffbeb; }
+.info { border-left-color: #2563eb; background: #eff6ff; }
+table { border-collapse: collapse; width: 100%; margin: 8pt 0; }
+th { background: #1C2333; color: #fff; text-align: left; padding: 6pt 10pt; font-size: 10pt; }
+td { border: 1px solid #ddd; padding: 6pt 10pt; font-size: 10pt; vertical-align: top; }
+code { background: #f1f5f9; padding: 2pt 5pt; border-radius: 3pt; font-family: Consolas, monospace; font-size: 10pt; color: #1C2333; }
+.label { display: inline-block; padding: 1pt 8pt; border-radius: 8pt; font-size: 9pt; font-weight: bold; color: #fff; }
+.label-must { background: #dc2626; }
+.label-nice { background: #d97706; }
+.label-ok { background: #16a34a; }
+.footer { margin-top: 32pt; padding-top: 12pt; border-top: 1px solid #ddd; font-size: 9pt; color: #888; text-align: center; }
+.checklist li { list-style: none; margin-left: -18pt; padding-left: 22pt; position: relative; }
+.checklist li:before { content: "☐"; position: absolute; left: 0; font-size: 13pt; color: #FF6B00; }
+</style>
+</head>
+<body>
+
+<h1>Studio Ideação — CRM/ERP/BI</h1>
+<p class="subtitle">Informações necessárias para hospedagem e envio de e-mails · Documento de briefing</p>
+
+<div class="box info">
+<p><strong>Para que serve este documento:</strong> reunir as informações que precisamos do cliente para deixar o sistema acessível em um subdomínio próprio dele (ex.: <code>crm.studioideacao.com.br</code>) e habilitar o envio de e-mails automáticos (convites de colaboradores, recuperação de senha e notificações).</p>
+<p>São <strong>2 frentes técnicas independentes</strong> que compartilham o mesmo painel de DNS — por isso a maior parte das informações é resolvida em uma única conversa.</p>
+</div>
+
+<h2>1. Hospedagem em subdomínio próprio</h2>
+
+<h3>1.1. Subdomínio escolhido</h3>
+<p>Defina onde o sistema vai responder. Sugestões:</p>
+<ul>
+<li><code>crm.studioideacao.com.br</code> — formato mais comum em SaaS interno</li>
+<li><code>app.studioideacao.com.br</code> — alternativa neutra</li>
+<li><code>sistema.studioideacao.com.br</code> — alternativa em português</li>
+</ul>
+
+<div class="box">
+<strong>Pergunta para o cliente:</strong><br>
+"Qual subdomínio você quer usar para o CRM? Sugiro <code>crm.studioideacao.com.br</code>, mas escolha o que faz mais sentido para a equipe."
+</div>
+
+<h3>1.2. Acesso ao DNS</h3>
+<p>Para apontar o subdomínio para a Vercel (onde o sistema fica hospedado), precisamos adicionar <strong>1 registro CNAME</strong> no painel onde o domínio está registrado.</p>
+
+<table>
+<tr><th>Tipo</th><th>Nome</th><th>Valor</th></tr>
+<tr><td>CNAME</td><td><code>crm</code> (ou o subdomínio escolhido)</td><td><code>cname.vercel-dns.com</code></td></tr>
+</table>
+
+<div class="box">
+<strong>Pergunta para o cliente:</strong><br>
+"Onde o domínio <code>studioideacao.com.br</code> está registrado? (Ex: Registro.br, GoDaddy, Hostgator, KingHost…) Você consegue adicionar registros DNS, ou prefere me dar acesso ao painel para eu configurar?"
+</div>
+
+<h3>1.3. Conta na Vercel</h3>
+<p>A Vercel é onde o sistema fica hospedado. Plano gratuito atende projetos de uso interno até ~100 GB de tráfego/mês.</p>
+
+<div class="box">
+<strong>Pergunta para o cliente:</strong><br>
+"Prefere criar a conta da Vercel com o e-mail da empresa (recomendado, para que a nota fiscal e a propriedade fiquem com vocês), ou faço o deploy na minha conta e transfiro depois?"
+</div>
+
+<h2>2. Envio de e-mails do sistema</h2>
+
+<p>O sistema dispara e-mails automáticos em três situações:</p>
+<ul>
+<li><strong>Convite de colaborador</strong> — quando um admin/gerente cadastra alguém novo na equipe</li>
+<li><strong>Recuperação de senha</strong> — link de "esqueci minha senha"</li>
+<li><strong>Notificações de sistema</strong> — alertas de pacote vencendo, follow-up atrasado, etc. (atualmente só dentro do app, futuro pode ser por e-mail)</li>
+</ul>
+
+<p>Vamos usar a <strong>Resend</strong> como provedor SMTP — gratuita até 3.000 e-mails por mês, suficiente para uma equipe pequena/média.</p>
+
+<h3>2.1. E-mail remetente</h3>
+<p>É o e-mail que o destinatário verá como remetente. <strong>Precisa ser de um domínio próprio</strong> — não pode ser <code>@gmail.com</code>, <code>@hotmail.com</code> ou outro endereço gratuito (provedores rejeitam).</p>
+
+<p>Sugestões de remetente:</p>
+<ul>
+<li><code>noreply@studioideacao.com.br</code></li>
+<li><code>crm@studioideacao.com.br</code></li>
+<li><code>sistema@studioideacao.com.br</code></li>
+</ul>
+
+<div class="box">
+<strong>Pergunta para o cliente:</strong><br>
+"Qual e-mail vai aparecer como remetente quando o sistema enviar convites e notificações? Sugiro <code>noreply@studioideacao.com.br</code>."
+</div>
+
+<h3>2.2. Registros DNS para autenticação</h3>
+<p>Para que o e-mail seja entregue (e não caia em spam), o domínio precisa de <strong>3 registros DNS</strong> que provam que estamos autorizados a enviar em nome dele:</p>
+
+<table>
+<tr><th>Tipo</th><th>Função</th><th>Quem fornece</th></tr>
+<tr><td>SPF (TXT)</td><td>Lista os servidores autorizados a enviar e-mail pelo domínio</td><td>Resend gera após criar a conta</td></tr>
+<tr><td>DKIM (TXT)</td><td>Assinatura digital de cada e-mail enviado</td><td>Resend gera após criar a conta</td></tr>
+<tr><td>DMARC (TXT)</td><td>Política de comportamento quando algo falhar</td><td>Resend gera após criar a conta</td></tr>
+</table>
+
+<p>Estes registros entram <strong>no mesmo painel de DNS</strong> onde vai entrar o CNAME da Vercel.</p>
+
+<h3>2.3. Conta na Resend</h3>
+
+<div class="box">
+<strong>Pergunta para o cliente:</strong><br>
+"Prefere criar a conta da Resend com o e-mail da empresa (recomendado), ou faço com a minha e te repasso o acesso depois?"
+</div>
+
+<h2>3. Resumo: tudo o que precisamos do cliente</h2>
+
+<p>Para acelerar, repasse esta lista exata:</p>
+
+<div class="box warn">
+<p><strong>Mensagem pronta para enviar ao cliente:</strong></p>
+<p style="margin-top: 10pt;">"Boa! Para finalizar o deploy do CRM em produção, preciso destas informações:</p>
+<ol>
+<li><strong>Subdomínio</strong> que vai usar (sugestão: <code>crm.studioideacao.com.br</code>)</li>
+<li><strong>E-mail remetente</strong> dos avisos do sistema (sugestão: <code>noreply@studioideacao.com.br</code>)</li>
+<li><strong>Acesso ao painel de DNS</strong> onde o domínio está registrado (Registro.br, GoDaddy, etc.) — vou precisar adicionar 4 registros: 1 CNAME (para a Vercel) e 3 TXT (SPF, DKIM, DMARC para os e-mails). Se preferir, você adiciona — eu te passo os valores exatos.</li>
+<li><strong>Contas Vercel e Resend</strong>: prefere criar você com o e-mail da empresa, ou faço na minha e te dou acesso depois?"</li>
+</ol>
+</div>
+
+<h2>4. Custos previstos</h2>
+
+<table>
+<tr><th>Serviço</th><th>Plano</th><th>Custo</th><th>Quando precisa migrar</th></tr>
+<tr><td>Vercel</td><td>Hobby (gratuito)</td><td>R$ 0</td><td>Até 100 GB de tráfego/mês — atende uso interno</td></tr>
+<tr><td>Supabase</td><td>Free</td><td>R$ 0</td><td>Até 500 MB de banco e 1 GB de storage; backup com retenção de 7 dias</td></tr>
+<tr><td>Resend</td><td>Free</td><td>R$ 0</td><td>Até 3.000 e-mails/mês — atende equipe pequena</td></tr>
+<tr><td>Domínio .com.br</td><td>Anual</td><td>~R$ 40/ano</td><td>Renovação anual no Registro.br</td></tr>
+</table>
+
+<p style="margin-top: 12pt;"><strong>Total inicial: R$ 0 (apenas custo do domínio se ainda não tiver).</strong></p>
+
+<p>Se o sistema crescer, planos pagos sugeridos:</p>
+<ul>
+<li><strong>Vercel Pro</strong> — US$ 20/mês (~R$ 100): necessário para usar domínio comercial sem limitações de bandwidth</li>
+<li><strong>Supabase Pro</strong> — US$ 25/mês (~R$ 125): backup com retenção de 30 dias e projeto não pausa por inatividade</li>
+<li><strong>Resend Pro</strong> — US$ 20/mês: 50.000 e-mails/mês</li>
+</ul>
+
+<h2>5. Linha do tempo</h2>
+
+<p>Após receber as respostas, a configuração leva <strong>cerca de 1 hora útil</strong>:</p>
+
+<table>
+<tr><th>Etapa</th><th>Tempo</th><th>Responsável</th></tr>
+<tr><td>Criar contas Vercel e Resend</td><td>10 min</td><td>Cliente (ou nós, com login dele)</td></tr>
+<tr><td>Conectar repositório à Vercel e fazer primeiro deploy</td><td>5 min</td><td>Nós</td></tr>
+<tr><td>Adicionar subdomínio na Vercel e gerar registros DNS</td><td>5 min</td><td>Nós</td></tr>
+<tr><td>Adicionar domínio na Resend e gerar registros SPF/DKIM/DMARC</td><td>5 min</td><td>Nós</td></tr>
+<tr><td>Cliente colar os 4 registros no painel de DNS</td><td>10 min</td><td>Cliente (ou nós, com acesso)</td></tr>
+<tr><td>Aguardar propagação DNS</td><td>até 30 min</td><td>—</td></tr>
+<tr><td>Testar convite real e validar fluxo completo</td><td>10 min</td><td>Nós</td></tr>
+</table>
+
+<h2>6. O que <span class="label label-must">NÃO</span> funciona</h2>
+
+<ul>
+<li><strong>E-mail remetente em domínio gratuito</strong> (<code>@gmail.com</code>, <code>@hotmail.com</code>, <code>@outlook.com</code>) — Resend rejeita o envio</li>
+<li><strong>Subdomínio sem CNAME apontando corretamente</strong> — Vercel não emite o certificado SSL</li>
+<li><strong>Cliente sem domínio próprio</strong> — alternativa é usar <code>*.vercel.app</code> (gratuito mas sem identidade) e remetente <code>onboarding@resend.dev</code> (parece spam para o usuário final)</li>
+</ul>
+
+<div class="footer">
+Studio Ideação Ltda · Documento gerado em maio de 2026<br>
+Em caso de dúvidas, retornar contato com o desenvolvedor responsável pelo sistema.
+</div>
+
+</body>
+</html>

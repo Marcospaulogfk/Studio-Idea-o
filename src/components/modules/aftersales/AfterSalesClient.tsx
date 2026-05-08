@@ -57,7 +57,7 @@ export default function AfterSalesClient({ initialAftersales }: { initialAftersa
         />
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <KpiCard title="Total de Pós-vendas" value={String(filtered.length)} icon={<Star size={20}/>} color="blue"/>
         <KpiCard title="Contatados" value={String(contacted)} subtitle={`${filtered.length-contacted} pendentes`} icon={<CheckCircle size={20}/>} color="green"/>
         <KpiCard title="NPS Médio" value={isNaN(avgNps) ? '—' : avgNps.toFixed(1)} subtitle="Escala 1–5" icon={<Star size={20}/>} color="purple"/>

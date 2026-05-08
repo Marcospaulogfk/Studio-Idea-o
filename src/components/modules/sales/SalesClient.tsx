@@ -153,7 +153,7 @@ export default function SalesClient({ initialSales, clients }: { initialSales: S
         }
       />
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <KpiCard title="Faturamento Total" value={formatCurrency(totalRevenue)} icon={<TrendingUp size={20}/>} color="blue"/>
         <KpiCard title="Já Recebido" value={formatCurrency(received)} icon={<DollarSign size={20}/>} color="green"/>
         <KpiCard title="A Receber" value={formatCurrency(pending)} icon={<ShoppingBag size={20}/>} color="yellow"/>

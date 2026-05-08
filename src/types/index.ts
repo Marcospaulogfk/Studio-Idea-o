@@ -13,6 +13,14 @@ export type ProductionStatus = 'queue' | 'in_progress' | 'done'
 export type FinancialType = 'receivable' | 'payable'
 export type FinancialStatus = 'pending' | 'paid' | 'overdue'
 export type FinancialCategory = 'personal' | 'tools' | 'marketing' | 'rent' | 'taxes' | 'ads' | 'other'
+export type FinancialRecurrence = 'none' | 'weekly' | 'monthly' | 'yearly'
+
+export const RECURRENCE_LABELS: Record<FinancialRecurrence, string> = {
+  none:    'Não recorre',
+  weekly:  'Semanal',
+  monthly: 'Mensal',
+  yearly:  'Anual',
+}
 export type NotificationType = 'followup_overdue' | 'package_expiring_15' | 'package_expiring_7' | 'package_expired' | 'sale_pending_payment' | 'production_done'
 
 export interface User {
@@ -161,6 +169,8 @@ export interface Financial {
   paid_at?: string
   payment_method?: string
   status: FinancialStatus
+  recurrence: FinancialRecurrence
+  recurrence_parent_id?: string
   created_at: string
   updated_at: string
   // relations

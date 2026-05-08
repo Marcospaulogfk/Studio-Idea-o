@@ -1,11 +1,11 @@
 'use client'
 import { useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Financial, FinancialType } from '@/types'
+import { Financial, FinancialType, FinancialRecurrence, RECURRENCE_LABELS } from '@/types'
 import { Button, Badge, Card, Input, MoneyInput, Select, PageHeader, KpiCard } from '@/components/ui'
 import { DateRangeFilter, inRange, type DateRange, type PresetId } from '@/components/ui/date-range'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
-import { Plus, X, TrendingUp, TrendingDown, ArrowUpDown, Pencil, Trash2, Download } from 'lucide-react'
+import { Plus, X, TrendingUp, TrendingDown, ArrowUpDown, Pencil, Trash2, Download, Repeat } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { downloadCsv } from '@/lib/csv'
 
@@ -13,6 +13,13 @@ const CAT_OPTIONS = [
   {value:'personal',label:'Pessoal'},{value:'tools',label:'Ferramentas'},
   {value:'marketing',label:'Marketing'},{value:'rent',label:'Aluguel'},
   {value:'taxes',label:'Impostos'},{value:'ads',label:'Anúncios'},{value:'other',label:'Outros'},
+]
+
+const RECURRENCE_OPTIONS = [
+  { value: 'none',    label: 'Não recorre' },
+  { value: 'weekly',  label: 'Semanal' },
+  { value: 'monthly', label: 'Mensal' },
+  { value: 'yearly',  label: 'Anual' },
 ]
 
 export default function FinancialClient({ initialFinancials }: { initialFinancials: Financial[] }) {
@@ -23,7 +30,7 @@ export default function FinancialClient({ initialFinancials }: { initialFinancia
   const [filter, setFilter] = useState<FinancialType|'all'>('all')
   const [datePreset, setDatePreset] = useState<PresetId>('all')
   const [dateRange, setDateRange] = useState<DateRange>({ from: null, to: null })
-  const [form, setForm] = useState({ type:'payable' as FinancialType, description:'', amount:'', category:'other', due_date:'' })
+  const [form, setForm] = useState({ type:'payable' as FinancialType, description:'', amount:'', category:'other', due_date:'', recurrence: 'none' as FinancialRecurrence })
 
   const filtered = useMemo(() => financials.filter(f => {
     if (filter !== 'all' && f.type !== filter) return false
@@ -47,12 +54,13 @@ export default function FinancialClient({ initialFinancials }: { initialFinancia
       { header: 'Valor (BRL)',   accessor: f => f.amount.toFixed(2).replace('.', ',') },
       { header: 'Vencimento',    accessor: f => f.due_date ? formatDate(f.due_date) : '' },
       { header: 'Status',        accessor: f => f.status === 'paid' ? 'Pago' : f.status === 'overdue' ? 'Vencido' : 'Pendente' },
+      { header: 'Recorrência',   accessor: f => RECURRENCE_LABELS[f.recurrence ?? 'none'] },
       { header: 'Pago em',       accessor: f => f.paid_at ? formatDate(f.paid_at) : '' },
     ])
   }
 
   function resetForm() {
-    setForm({ type:'payable', description:'', amount:'', category:'other', due_date:'' })
+    setForm({ type:'payable', description:'', amount:'', category:'other', due_date:'', recurrence: 'none' })
     setEditingId(null)
     setShowForm(false)
   }
@@ -65,6 +73,7 @@ export default function FinancialClient({ initialFinancials }: { initialFinancia
       amount: String(f.amount),
       category: f.category ?? 'other',
       due_date: f.due_date ?? '',
+      recurrence: (f.recurrence ?? 'none') as FinancialRecurrence,
     })
     setShowForm(true)
   }
@@ -77,6 +86,7 @@ export default function FinancialClient({ initialFinancials }: { initialFinancia
       amount: Number(form.amount),
       category: form.category,
       due_date: form.due_date || null,
+      recurrence: form.recurrence,
     }
     if (editingId) {
       const { data, error } = await supabase.from('financials').update(payload).eq('id', editingId).select().single()
@@ -96,6 +106,22 @@ export default function FinancialClient({ initialFinancials }: { initialFinancia
     const { error } = await supabase.from('financials').update({ status:'paid', paid_at: new Date().toISOString() }).eq('id', f.id)
     if (error) { toast.error('Erro'); return }
     setFinancials(prev => prev.map(x => x.id === f.id ? {...x, status:'paid', paid_at: new Date().toISOString()} : x))
+
+    // Se for recorrente, o trigger criou a próxima ocorrência automaticamente — busca ela
+    if (f.recurrence && f.recurrence !== 'none') {
+      const { data: spawned } = await supabase
+        .from('financials')
+        .select('*, sale:sales(id, client:clients(name))')
+        .eq('recurrence_parent_id', f.id)
+        .order('due_date', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (spawned && !financials.some(x => x.id === spawned.id)) {
+        setFinancials(prev => [spawned as Financial, ...prev])
+        toast.success(`Pago! Próxima ${RECURRENCE_LABELS[f.recurrence].toLowerCase()} criada para ${spawned.due_date ? formatDate(spawned.due_date) : 'data calculada'}`)
+        return
+      }
+    }
     toast.success('Marcado como pago!')
   }
 
@@ -156,7 +182,19 @@ export default function FinancialClient({ initialFinancials }: { initialFinancia
               {filtered.length===0 && <tr><td colSpan={6} className="text-center py-10 text-sm text-gray-400 dark:text-neutral-500">Nenhum lançamento</td></tr>}
               {filtered.map(f=>(
                 <tr key={f.id} className="hover:bg-orange-500/5 transition-colors group">
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-neutral-100">{f.description}</td>
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-neutral-100">
+                    <div className="flex items-center gap-2">
+                      {f.recurrence && f.recurrence !== 'none' && (
+                        <span title={`Recorrência: ${RECURRENCE_LABELS[f.recurrence]}`} className="inline-flex items-center text-orange-500 dark:text-orange-400 shrink-0">
+                          <Repeat size={13} />
+                        </span>
+                      )}
+                      <span className="truncate">{f.description}</span>
+                    </div>
+                    {f.recurrence && f.recurrence !== 'none' && (
+                      <p className="text-[10px] uppercase tracking-wider text-gray-400 dark:text-neutral-500 mt-0.5">{RECURRENCE_LABELS[f.recurrence]}</p>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <Badge variant={f.type==='receivable'?'green':'red'}>{f.type==='receivable'?'↓ Entrada':'↑ Saída'}</Badge>
                   </td>
@@ -200,6 +238,20 @@ export default function FinancialClient({ initialFinancials }: { initialFinancia
                 <Input label="Vencimento" type="date" value={form.due_date} onChange={e=>setForm(p=>({...p,due_date:e.target.value}))}/>
               </div>
               <Select label="Categoria" options={CAT_OPTIONS} value={form.category} onChange={e=>setForm(p=>({...p,category:e.target.value}))}/>
+              <Select
+                label="Recorrência"
+                options={RECURRENCE_OPTIONS}
+                value={form.recurrence}
+                onChange={e=>setForm(p=>({...p,recurrence:e.target.value as FinancialRecurrence}))}
+              />
+              {form.recurrence !== 'none' && (
+                <div className="flex items-start gap-2 p-3 rounded-xl bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20">
+                  <Repeat size={14} className="text-orange-600 dark:text-orange-400 mt-0.5 shrink-0" />
+                  <p className="text-xs text-orange-700 dark:text-orange-300">
+                    Quando você marcar como pago, o sistema cria automaticamente a próxima ocorrência <strong>{RECURRENCE_LABELS[form.recurrence].toLowerCase()}</strong> com data ajustada.
+                  </p>
+                </div>
+              )}
               <div className="flex gap-3 pt-2">
                 <Button type="button" variant="secondary" onClick={resetForm} className="flex-1">Cancelar</Button>
                 <Button type="submit" className="flex-1">{editingId ? 'Salvar alterações' : 'Criar'}</Button>

@@ -340,7 +340,7 @@ export default function ProductionClient({ initialProductions }: { initialProduc
         />
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <KpiCard title="Na Fila" value={String(byStatus.queue.length)} icon={<Clock size={20}/>} color="blue"/>
         <KpiCard title="Em Produção" value={String(byStatus.in_progress.length)} icon={<Clapperboard size={20}/>} color="yellow"/>
         <KpiCard title="Finalizadas" value={String(byStatus.done.length)} icon={<CheckCircle size={20}/>} color="green"/>
@@ -354,7 +354,7 @@ export default function ProductionClient({ initialProductions }: { initialProduc
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {COLUMNS.map(col => (
             <DroppableColumn
               key={col}
