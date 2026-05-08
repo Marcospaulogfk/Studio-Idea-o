@@ -48,6 +48,9 @@ export default function UpdatePasswordPage() {
       return
     }
 
+    // Ativa o colaborador no public.users (estava como pendente desde o convite)
+    await fetch('/api/auth/activate', { method: 'POST' }).catch(() => {})
+
     setDone(true)
     setTimeout(() => router.push('/dashboard'), 2000)
   }

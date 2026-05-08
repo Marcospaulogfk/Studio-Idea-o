@@ -14,6 +14,7 @@ interface Member {
   role: UserRole
   active: boolean
   created_at: string
+  last_sign_in_at?: string | null
 }
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -57,7 +58,8 @@ export default function TeamClient({ initial, currentUserRole, currentUserId }: 
     ? [{ value: 'admin', label: 'Administrador' }, { value: 'manager', label: 'Gerente' }, { value: 'operator', label: 'Operador' }]
     : [{ value: 'manager', label: 'Gerente' }, { value: 'operator', label: 'Operador' }])
 
-  const activeCount = members.filter(m => m.active).length
+  const activeCount = members.filter(m => m.active && m.last_sign_in_at).length
+  const pendingCount = members.filter(m => !m.last_sign_in_at).length
   const adminCount = members.filter(m => m.role === 'admin').length
   const operatorCount = members.filter(m => m.role === 'operator').length
 
@@ -167,7 +169,7 @@ export default function TeamClient({ initial, currentUserRole, currentUserId }: 
     <div className="space-y-6">
       <PageHeader
         title="Equipe"
-        subtitle={`${activeCount} colaborador${activeCount !== 1 ? 'es' : ''} ativo${activeCount !== 1 ? 's' : ''}`}
+        subtitle={`${activeCount} ativo${activeCount !== 1 ? 's' : ''}${pendingCount > 0 ? ` · ${pendingCount} pendente${pendingCount !== 1 ? 's' : ''}` : ''}`}
         action={
           <Button onClick={() => setShowForm(true)}>
             <UserPlus size={16} /> Adicionar Colaborador
@@ -177,7 +179,7 @@ export default function TeamClient({ initial, currentUserRole, currentUserId }: 
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard title="Total" value={String(members.length)} icon={<UserIcon size={20} />} color="blue" />
-        <KpiCard title="Ativos" value={String(activeCount)} icon={<UserPlus size={20} />} color="green" />
+        <KpiCard title="Ativos" value={String(activeCount)} subtitle={pendingCount > 0 ? `${pendingCount} pendente${pendingCount!==1?'s':''}` : undefined} icon={<UserPlus size={20} />} color="green" />
         <KpiCard title="Administradores" value={String(adminCount)} icon={<ShieldCheck size={20} />} color="red" />
         <KpiCard title="Operadores" value={String(operatorCount)} icon={<UserIcon size={20} />} color="purple" />
       </div>
@@ -222,7 +224,12 @@ export default function TeamClient({ initial, currentUserRole, currentUserId }: 
                       desde {formatDate(m.created_at)}
                     </span>
                     <Badge variant={ROLE_BADGE[m.role]}>{ROLE_LABELS[m.role]}</Badge>
-                    <Badge variant={m.active ? 'green' : 'gray'}>{m.active ? 'Ativo' : 'Inativo'}</Badge>
+                    {(() => {
+                      // Pendente: nunca logou (sem last_sign_in_at). Independe de active=true/false.
+                      const neverLoggedIn = !m.last_sign_in_at
+                      if (neverLoggedIn) return <Badge variant="orange" pulse>Pendente</Badge>
+                      return <Badge variant={m.active ? 'green' : 'gray'}>{m.active ? 'Ativo' : 'Desativado'}</Badge>
+                    })()}
 
                     {!isSelf && (
                       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">

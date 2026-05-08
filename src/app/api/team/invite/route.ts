@@ -47,7 +47,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Apenas admins podem cadastrar admins' }, { status: 403 })
   }
 
-  const origin = req.headers.get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  // Em produção (atrás de proxy), origin pode vir nulo. Prioriza NEXT_PUBLIC_APP_URL.
+  const origin = process.env.NEXT_PUBLIC_APP_URL || req.headers.get('origin') || 'http://localhost:3000'
   const redirectTo = `${origin}/auth/callback?next=/auth/update-password`
 
   // Envia o convite via Supabase Auth — se já existir, reenvia.
@@ -81,11 +82,13 @@ export async function POST(req: NextRequest) {
     .eq('email', email)
     .maybeSingle()
 
+  // Convidado fica como pendente (active=false) até definir a senha pela primeira vez.
+  // Reenvio também não reativa — só o login efetivo do convidado faz isso.
   let user
   if (existing) {
     const { data, error } = await supabaseAdmin
       .from('users')
-      .update({ name, role, active: true })
+      .update({ name, role })
       .eq('id', existing.id)
       .select('id, email, name, role, active, created_at')
       .single()
@@ -95,19 +98,18 @@ export async function POST(req: NextRequest) {
     const { data, error } = await supabaseAdmin
       .from('users')
       .insert({
-        id: invited?.user?.id, // tenta usar o auth.uid se vier
+        id: invited?.user?.id,
         email,
         name,
         role,
-        active: true,
+        active: false,
       })
       .select('id, email, name, role, active, created_at')
       .single()
     if (error) {
-      // Se falhar por id duplicado/inválido, insere sem id
       const fallback = await supabaseAdmin
         .from('users')
-        .insert({ email, name, role, active: true })
+        .insert({ email, name, role, active: false })
         .select('id, email, name, role, active, created_at')
         .single()
       if (fallback.error) return NextResponse.json({ error: fallback.error.message }, { status: 500 })

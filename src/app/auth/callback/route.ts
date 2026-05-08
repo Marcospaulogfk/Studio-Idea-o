@@ -8,7 +8,18 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code')
   const token_hash = searchParams.get('token_hash')
   const type = searchParams.get('type')
-  const next = searchParams.get('next') ?? '/dashboard'
+  const nextParam = searchParams.get('next')
+
+  // Detecta se a confirmação é de convite/recuperação. Quando vem de
+  // PKCE (code), o type pode não vir como query — usamos o `next` ou o
+  // próprio request referer pra inferir.
+  const isInviteOrRecovery =
+    type === 'invite' ||
+    type === 'recovery' ||
+    nextParam === '/auth/update-password'
+
+  const fallbackNext = isInviteOrRecovery ? '/auth/update-password' : '/dashboard'
+  const next = nextParam || fallbackNext
 
   const cookieStore = cookies()
 
@@ -27,25 +38,27 @@ export async function GET(request: NextRequest) {
     }
   )
 
-  // Fluxo de código OAuth / Magic Link
+  // 1) Fluxo PKCE com code (formato moderno do Supabase)
   if (code) {
-    await supabase.auth.exchangeCodeForSession(code)
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    if (error) {
+      return NextResponse.redirect(`${origin}/auth/login?error=invalid_code`)
+    }
     return NextResponse.redirect(`${origin}${next}`)
   }
 
-  // Fluxo de token hash (convite / reset de senha)
+  // 2) Fluxo legado de token_hash (alguns templates do Supabase ainda usam)
   if (token_hash && type) {
     const { error } = await supabase.auth.verifyOtp({ token_hash, type: type as any })
-
     if (!error) {
-      // Se for convite ou recovery, redireciona para definir senha
       if (type === 'invite' || type === 'recovery') {
         return NextResponse.redirect(`${origin}/auth/update-password`)
       }
       return NextResponse.redirect(`${origin}${next}`)
     }
+    return NextResponse.redirect(`${origin}/auth/login?error=invalid_token`)
   }
 
-  // Fallback: redireciona para login com erro
+  // Sem code nem token — link inválido ou expirado
   return NextResponse.redirect(`${origin}/auth/login?error=auth_error`)
 }
