@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import type { UserRole } from '@/types'
@@ -51,25 +52,37 @@ export async function POST(req: NextRequest) {
   const origin = process.env.NEXT_PUBLIC_APP_URL || req.headers.get('origin') || 'http://localhost:3000'
   const redirectTo = `${origin}/auth/callback?next=/auth/update-password`
 
-  // Envia o convite via Supabase Auth — se já existir, reenvia.
+  // Cliente público pra disparar e-mail de recovery quando user já existe
+  // (resetPasswordForEmail manda o e-mail; generateLink só gera o link sem enviar).
+  const supabasePublic = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  )
+
+  // 1ª tentativa: convite formal (cria user no auth.users + envia e-mail de invite)
   const { data: invited, error: inviteErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
     data: { name, role },
     redirectTo,
   })
 
-  // Se for resend explícito, ou se falhou por usuário já existente, tentamos reenviar.
+  let invitedUserId = invited?.user?.id
+
   if (inviteErr) {
     const msg = inviteErr.message ?? ''
-    const alreadyRegistered = /already registered|already exists|User already/i.test(msg)
+    // Cobre as variações: "already been registered", "already exists", "User already", "email_exists"
+    const alreadyRegistered = /already.*registered|already.*exists|already been|email_exists/i.test(msg)
+
     if (resend || alreadyRegistered) {
-      const { error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
-        type: 'invite',
-        email,
-        options: { redirectTo, data: { name, role } },
-      })
-      if (linkErr) {
-        return NextResponse.json({ error: linkErr.message }, { status: 400 })
+      // User já existe — dispara link de recovery (ENVIA o e-mail).
+      // Funciona tanto pra quem nunca logou quanto pra quem já logou.
+      const { error: resetErr } = await supabasePublic.auth.resetPasswordForEmail(email, { redirectTo })
+      if (resetErr) {
+        return NextResponse.json({ error: resetErr.message }, { status: 400 })
       }
+      // Tenta capturar o id do user existente pra linkar com public.users abaixo
+      const { data: list } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 })
+      const found = list?.users?.find(u => u.email?.toLowerCase() === email)
+      if (found) invitedUserId = found.id
     } else {
       return NextResponse.json({ error: msg || 'Falha ao enviar convite' }, { status: 400 })
     }
@@ -98,7 +111,7 @@ export async function POST(req: NextRequest) {
     const { data, error } = await supabaseAdmin
       .from('users')
       .insert({
-        id: invited?.user?.id,
+        id: invitedUserId,
         email,
         name,
         role,
