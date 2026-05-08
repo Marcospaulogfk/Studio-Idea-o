@@ -50,7 +50,9 @@ export async function POST(req: NextRequest) {
 
   // Em produção (atrás de proxy), origin pode vir nulo. Prioriza NEXT_PUBLIC_APP_URL.
   const origin = process.env.NEXT_PUBLIC_APP_URL || req.headers.get('origin') || 'http://localhost:3000'
-  const redirectTo = `${origin}/auth/callback?next=/auth/update-password`
+  // Sem query string — Supabase ignora `?next=...` no redirect_to e cai pro Site URL.
+  // O próprio /auth/callback detecta type=recovery|invite e redireciona pra update-password.
+  const redirectTo = `${origin}/auth/callback`
 
   // Cliente público pra disparar e-mail de recovery quando user já existe
   // (resetPasswordForEmail manda o e-mail; generateLink só gera o link sem enviar).
